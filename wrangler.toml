@@ -1,0 +1,19 @@
+name = "mcp-universal-bridge"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+node_compat = true
+
+[env.production]
+name = "mcp-universal-bridge"
+
+# Secrets (set with: wrangler secret put SECRET_NAME)
+# ANTHROPIC_API_KEY
+# GOOGLE_API_KEY
+# OPENAI_API_KEY
+
+# Variables
+[vars]
+CLAUDE_MODEL = "claude-sonnet-4-5-20250929"
+GEMINI_MODEL = "gemini-2.0-flash-exp"
+OPENAI_MODEL = "gpt-4o"
+API_TIMEOUT = "60000"

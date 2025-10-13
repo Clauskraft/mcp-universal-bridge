@@ -1,0 +1,406 @@
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+import { sessionManager } from './utils/session.js';
+import { providerManager } from './providers/manager.js';
+import {
+  RegisterDeviceRequestSchema,
+  CreateSessionRequestSchema,
+  SendMessageRequestSchema,
+  ExecuteToolRequestSchema,
+  BridgeError,
+} from './types/index.js';
+
+const app = new Hono();
+
+// ==================== Middleware ====================
+
+app.use('*', cors());
+app.use('*', logger());
+
+// Error handler
+app.onError((err, c) => {
+  console.error('Error:', err);
+
+  if (err instanceof BridgeError) {
+    return c.json(
+      {
+        error: err.message,
+        code: err.code,
+        details: err.details,
+      },
+      err.statusCode as any
+    );
+  }
+
+  return c.json(
+    {
+      error: err.message || 'Internal server error',
+      code: 'INTERNAL_ERROR',
+    },
+    500
+  );
+});
+
+// ==================== Root & Health ====================
+
+app.get('/', (c) => {
+  return c.json({
+    name: 'MCP Universal AI Bridge',
+    version: '1.0.0',
+    description: '🌉 Connecting devices to Claude, Gemini, ChatGPT and more',
+    providers: providerManager.getAvailableProviders(),
+    endpoints: {
+      health: 'GET /health',
+      stats: 'GET /stats',
+      devices: 'POST /devices/register, GET /devices, GET /devices/:id, DELETE /devices/:id',
+      sessions: 'POST /sessions, GET /sessions/:id, DELETE /sessions/:id',
+      chat: 'POST /chat, POST /chat/stream',
+      tools: 'POST /tools',
+      providers: 'GET /providers, GET /providers/:id/models',
+    },
+    documentation: 'https://github.com/yourusername/mcp-universal-bridge',
+  });
+});
+
+app.get('/health', async (c) => {
+  const health = await providerManager.healthCheckAll();
+  const healthMap: Record<string, any> = {};
+
+  for (const [provider, status] of health.entries()) {
+    healthMap[provider] = {
+      healthy: status.healthy,
+      latency: status.latency,
+      error: status.error,
+    };
+  }
+
+  return c.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    providers: healthMap,
+  });
+});
+
+app.get('/stats', (c) => {
+  const stats = sessionManager.getStatistics();
+  return c.json(stats);
+});
+
+// ==================== Device Management ====================
+
+app.post('/devices/register', async (c) => {
+  const body = await c.req.json();
+  const validated = RegisterDeviceRequestSchema.parse(body);
+
+  const device = sessionManager.registerDevice(
+    validated.name,
+    validated.type,
+    validated.capabilities
+  );
+
+  return c.json(
+    {
+      device,
+      message: 'Device registered successfully',
+    },
+    201
+  );
+});
+
+app.get('/devices', (c) => {
+  const devices = sessionManager.getAllDevices();
+  return c.json({ devices });
+});
+
+app.get('/devices/:id', (c) => {
+  const deviceId = c.req.param('id');
+  const device = sessionManager.getDevice(deviceId);
+  const sessions = sessionManager.getDeviceSessions(deviceId);
+
+  return c.json({
+    device,
+    sessions: sessions.map((s) => ({
+      id: s.id,
+      provider: s.config.provider,
+      model: s.config.model,
+      active: s.active,
+      messageCount: s.messages.length,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+    })),
+  });
+});
+
+app.delete('/devices/:id', (c) => {
+  const deviceId = c.req.param('id');
+  sessionManager.disconnectDevice(deviceId);
+
+  return c.json({
+    message: 'Device disconnected successfully',
+  });
+});
+
+// ==================== Session Management ====================
+
+app.post('/sessions', async (c) => {
+  const body = await c.req.json();
+  const validated = CreateSessionRequestSchema.parse(body);
+
+  // Verify device exists
+  sessionManager.getDevice(validated.deviceId);
+
+  // Verify provider is available
+  if (!providerManager.isProviderAvailable(validated.config.provider)) {
+    throw new BridgeError(
+      `Provider ${validated.config.provider} not available`,
+      'PROVIDER_NOT_AVAILABLE',
+      400
+    );
+  }
+
+  const session = sessionManager.createSession(validated.deviceId, validated.config);
+
+  return c.json(
+    {
+      session: {
+        id: session.id,
+        deviceId: session.deviceId,
+        provider: session.config.provider,
+        model: session.config.model,
+        createdAt: session.createdAt,
+      },
+      message: 'Session created successfully',
+    },
+    201
+  );
+});
+
+app.get('/sessions/:id', (c) => {
+  const sessionId = c.req.param('id');
+  const session = sessionManager.getSession(sessionId);
+
+  return c.json({
+    session: {
+      id: session.id,
+      deviceId: session.deviceId,
+      config: session.config,
+      messageCount: session.messages.length,
+      active: session.active,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+    },
+    messages: session.messages,
+  });
+});
+
+app.delete('/sessions/:id', (c) => {
+  const sessionId = c.req.param('id');
+  sessionManager.deleteSession(sessionId);
+
+  return c.json({
+    message: 'Session deleted successfully',
+  });
+});
+
+// ==================== Chat ====================
+
+app.post('/chat', async (c) => {
+  const body = await c.req.json();
+  const validated = SendMessageRequestSchema.parse(body);
+
+  const session = sessionManager.getSession(validated.sessionId);
+  const provider = providerManager.getProvider(session.config.provider);
+
+  // Add user message
+  sessionManager.addMessage(validated.sessionId, {
+    role: 'user',
+    content: validated.message,
+    timestamp: new Date(),
+  });
+
+  // Get AI response
+  const startTime = Date.now();
+  try {
+    const response = await provider.chat(
+      {
+        sessionId: validated.sessionId,
+        message: validated.message,
+        streaming: false,
+        tools: validated.tools,
+      },
+      session
+    );
+
+    const latency = Date.now() - startTime;
+
+    // Add assistant message
+    sessionManager.addMessage(validated.sessionId, response.message);
+
+    // Update stats
+    sessionManager.updateProviderStats(
+      session.config.provider,
+      response.usage.totalTokens,
+      latency
+    );
+
+    return c.json({
+      response: response.message.content,
+      usage: response.usage,
+      toolCalls: response.toolCalls,
+      finishReason: response.finishReason,
+      latency,
+    });
+  } catch (error: any) {
+    const latency = Date.now() - startTime;
+    sessionManager.updateProviderStats(session.config.provider, 0, latency, true);
+    throw error;
+  }
+});
+
+app.post('/chat/stream', async (c) => {
+  const body = await c.req.json();
+  const validated = SendMessageRequestSchema.parse(body);
+
+  const session = sessionManager.getSession(validated.sessionId);
+  const provider = providerManager.getProvider(session.config.provider);
+
+  // Add user message
+  sessionManager.addMessage(validated.sessionId, {
+    role: 'user',
+    content: validated.message,
+    timestamp: new Date(),
+  });
+
+  // Set up SSE stream
+  return c.stream(async (stream) => {
+    stream.onAbort(() => {
+      console.log('Stream aborted by client');
+    });
+
+    let fullText = '';
+    let finalUsage: any = null;
+    let finalToolCalls: any = null;
+    const startTime = Date.now();
+
+    try {
+      const chatStream = provider.chatStream(
+        {
+          sessionId: validated.sessionId,
+          message: validated.message,
+          streaming: true,
+          tools: validated.tools,
+        },
+        session
+      );
+
+      for await (const chunk of chatStream) {
+        if (chunk.done) {
+          finalUsage = chunk.usage;
+          finalToolCalls = chunk.toolCalls;
+        } else {
+          fullText += chunk.delta;
+          await stream.write(`data: ${JSON.stringify(chunk)}\n\n`);
+        }
+      }
+
+      // Add assistant message
+      sessionManager.addMessage(validated.sessionId, {
+        role: 'assistant',
+        content: fullText,
+        timestamp: new Date(),
+      });
+
+      // Update stats
+      const latency = Date.now() - startTime;
+      if (finalUsage) {
+        sessionManager.updateProviderStats(
+          session.config.provider,
+          finalUsage.inputTokens + finalUsage.outputTokens,
+          latency
+        );
+      }
+
+      // Send final done event
+      await stream.write(
+        `data: ${JSON.stringify({
+          sessionId: validated.sessionId,
+          delta: '',
+          usage: finalUsage,
+          toolCalls: finalToolCalls,
+          done: true,
+        })}\n\n`
+      );
+    } catch (error: any) {
+      const latency = Date.now() - startTime;
+      sessionManager.updateProviderStats(session.config.provider, 0, latency, true);
+
+      await stream.write(
+        `data: ${JSON.stringify({
+          error: error.message,
+          done: true,
+        })}\n\n`
+      );
+    }
+  });
+});
+
+// ==================== Tool Execution ====================
+
+app.post('/tools', async (c) => {
+  const body = await c.req.json();
+  const validated = ExecuteToolRequestSchema.parse(body);
+
+  const session = sessionManager.getSession(validated.sessionId);
+
+  // Add tool results as message
+  sessionManager.addMessage(validated.sessionId, {
+    role: 'tool',
+    content: JSON.stringify(validated.toolResults),
+    toolResults: validated.toolResults,
+    timestamp: new Date(),
+  });
+
+  return c.json({
+    message: 'Tool results recorded successfully',
+    sessionId: validated.sessionId,
+  });
+});
+
+// ==================== Provider Info ====================
+
+app.get('/providers', (c) => {
+  const providers = providerManager.getProviderStats();
+  return c.json({ providers });
+});
+
+app.get('/providers/:id/models', (c) => {
+  const providerId = c.req.param('id') as any;
+  const models = providerManager.getAvailableModels(providerId);
+
+  return c.json({
+    provider: providerId,
+    models,
+  });
+});
+
+// ==================== Admin ====================
+
+app.post('/admin/cleanup', async (c) => {
+  const result = await sessionManager.manualCleanup();
+  return c.json({
+    message: 'Cleanup completed',
+    cleaned: result,
+  });
+});
+
+app.post('/admin/stats/reset', (c) => {
+  sessionManager.resetStatistics();
+  return c.json({
+    message: 'Statistics reset successfully',
+  });
+});
+
+// ==================== Export ====================
+
+export default app;
