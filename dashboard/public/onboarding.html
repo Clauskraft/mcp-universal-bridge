@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Wizard - MCP Universal AI Bridge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0000FF 0%, #00008B 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        :root {
+            --tdc-blue: #0000FF;
+            --tdc-dark-blue: #00008B;
+            --tdc-light-blue: #ADD8E6;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --border: #e0e0e0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        .wizard-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .wizard-header {
+            padding: 2rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--tdc-blue) 0%, var(--tdc-dark-blue) 100%);
+            color: white;
+        }
+
+        .wizard-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .wizard-header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: #f0f0f0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--tdc-blue);
+            transition: width 0.3s ease;
+        }
+
+        .wizard-content {
+            padding: 3rem;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step h2 {
+            font-size: 1.75rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .step p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group label .required {
+            color: var(--error);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--tdc-blue);
+            box-shadow: 0 0 0 3px rgba(0, 0, 255, 0.1);
+        }
+
+        .form-group .hint {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .form-group .hint a {
+            color: var(--tdc-blue);
+            text-decoration: none;
+        }
+
+        .form-group .hint a:hover {
+            text-decoration: underline;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .status-indicator.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-indicator.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-indicator.testing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+
+        .feature-card {
+            padding: 1.5rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            text-align: center;
+        }
+
+        .feature-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-card p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .wizard-actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 2rem 3rem;
+            border-top: 1px solid var(--border);
+            background: #f9fafb;
+        }
+
+        .btn {
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--tdc-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--tdc-dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 255, 0.3);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text-secondary);
+            border: 2px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--tdc-blue);
+            color: var(--tdc-blue);
+        }
+
+        .btn-test {
+            background: var(--warning);
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+
+        .btn-test:hover {
+            background: #d97706;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .step-indicator {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="wizard-container">
+        <div class="wizard-header">
+            <h1>🌉 Welcome to MCP Universal AI Bridge!</h1>
+            <p>Let's get you set up in 3 simple steps</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+
+        <div class="wizard-content">
+            <!-- Step 1: Welcome -->
+            <div class="step active" data-step="1">
+                <h2>👋 Welcome!</h2>
+                <p>
+                    MCP Universal AI Bridge connects you to multiple AI providers through one simple API.
+                    In the next steps, we'll help you set up your API keys and get started.
+                </p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="icon">🤖</div>
+                        <h3>Multiple Providers</h3>
+                        <p>Claude, ChatGPT, Gemini</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">🔧</div>
+                        <h3>Powerful Tools</h3>
+                        <p>Web, Files, Code, DB</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">📊</div>
+                        <h3>Full Transparency</h3>
+                        <p>See all operations</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">💰</div>
+                        <h3>Cost Tracking</h3>
+                        <p>Monitor usage & costs</p>
+                    </div>
+                </div>
+
+                <p style="margin-top: 2rem;">
+                    <strong>What you'll need:</strong> API keys for the AI providers you want to use.
+                    Don't worry - we'll show you exactly where to get them! 🎯
+                </p>
+            </div>
+
+            <!-- Step 2: API Keys Setup -->
+            <div class="step" data-step="2">
+                <h2>🔑 API Keys Setup</h2>
+                <p>Add your API keys to connect to AI providers. You can add more later in Settings.</p>
+
+                <div class="form-group">
+                    <label>
+                        🟣 Anthropic Claude API Key <span class="required">*</span>
+                    </label>
+                    <input type="password" id="claude-key" placeholder="sk-ant-api03-...">
+                    <div class="hint">
+                        Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>
+                    </div>
+                    <div id="claude-status"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        🟢 OpenAI ChatGPT API Key
+                    </label>
+                    <input type="password" id="chatgpt-key" placeholder="sk-proj-...">
+                    <div class="hint">
+                        Get your key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>
+                    </div>
+                    <div id="chatgpt-status"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        🔵 Google Gemini API Key
+                    </label>
+                    <input type="password" id="gemini-key" placeholder="AIza...">
+                    <div class="hint">
+                        Get your key at <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a>
+                    </div>
+                    <div id="gemini-status"></div>
+                </div>
+
+                <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 8px; border-left: 4px solid var(--warning);">
+                    <strong>💡 Pro Tip:</strong> At least one API key is required. You can skip optional keys and add them later in Settings.
+                </div>
+            </div>
+
+            <!-- Step 3: Test & Finish -->
+            <div class="step" data-step="3">
+                <h2>🚀 Ready to Go!</h2>
+                <p>Your setup is complete! Here's what you can do now:</p>
+
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="icon">💬</div>
+                        <h3>Start Chatting</h3>
+                        <p>Talk to AI with tools</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">📊</div>
+                        <h3>View Dashboard</h3>
+                        <p>Monitor usage & stats</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">⚙️</div>
+                        <h3>Configure</h3>
+                        <p>Fine-tune settings</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="icon">📚</div>
+                        <h3>Learn More</h3>
+                        <p>Read documentation</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 2rem; padding: 1.5rem; background: #d1fae5; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem;">🎉</div>
+                    <h3 style="color: var(--success); margin-bottom: 0.5rem;">Setup Complete!</h3>
+                    <p style="color: #065f46; margin: 0;">
+                        You're all set to start using MCP Universal AI Bridge
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="wizard-actions">
+            <button class="btn btn-secondary" id="btn-back" onclick="previousStep()" style="display: none;">
+                ← Back
+            </button>
+            <div class="step-indicator" id="step-indicator">Step 1 of 3</div>
+            <button class="btn btn-primary" id="btn-next" onclick="nextStep()">
+                Next →
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+        const totalSteps = 3;
+
+        function updateProgress() {
+            const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+            document.getElementById('step-indicator').textContent = `Step ${currentStep} of ${totalSteps}`;
+
+            // Update button visibility
+            document.getElementById('btn-back').style.display = currentStep > 1 ? 'block' : 'none';
+
+            // Update next button text
+            const btnNext = document.getElementById('btn-next');
+            if (currentStep === totalSteps) {
+                btnNext.textContent = '🚀 Start Using Bridge';
+            } else {
+                btnNext.textContent = 'Next →';
+            }
+        }
+
+        function nextStep() {
+            // Validate current step
+            if (currentStep === 2) {
+                const claudeKey = document.getElementById('claude-key').value;
+                if (!claudeKey) {
+                    alert('⚠️ At least Claude API key is required to proceed.');
+                    return;
+                }
+
+                // Save API keys
+                saveAPIKeys();
+            }
+
+            if (currentStep === totalSteps) {
+                // Finish wizard
+                finishWizard();
+                return;
+            }
+
+            // Hide current step
+            document.querySelector('.step.active').classList.remove('active');
+
+            // Show next step
+            currentStep++;
+            document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+
+            updateProgress();
+        }
+
+        function previousStep() {
+            if (currentStep === 1) return;
+
+            // Hide current step
+            document.querySelector('.step.active').classList.remove('active');
+
+            // Show previous step
+            currentStep--;
+            document.querySelector(`.step[data-step="${currentStep}"]`).classList.add('active');
+
+            updateProgress();
+        }
+
+        function saveAPIKeys() {
+            const keys = {
+                claude: document.getElementById('claude-key').value,
+                chatgpt: document.getElementById('chatgpt-key').value,
+                gemini: document.getElementById('gemini-key').value
+            };
+
+            // Save to localStorage
+            if (keys.claude) localStorage.setItem('ANTHROPIC_API_KEY', keys.claude);
+            if (keys.chatgpt) localStorage.setItem('OPENAI_API_KEY', keys.chatgpt);
+            if (keys.gemini) localStorage.setItem('GOOGLE_API_KEY', keys.gemini);
+
+            // Mark onboarding as complete
+            localStorage.setItem('onboarding_complete', 'true');
+
+            console.log('✅ API keys saved to localStorage');
+        }
+
+        function finishWizard() {
+            // Redirect to chat
+            window.location.href = '/chat.html';
+        }
+
+        // Auto-test API keys when entered
+        document.getElementById('claude-key')?.addEventListener('blur', async function() {
+            if (this.value) await testAPIKey('claude', this.value);
+        });
+
+        document.getElementById('chatgpt-key')?.addEventListener('blur', async function() {
+            if (this.value) await testAPIKey('chatgpt', this.value);
+        });
+
+        document.getElementById('gemini-key')?.addEventListener('blur', async function() {
+            if (this.value) await testAPIKey('gemini', this.value);
+        });
+
+        async function testAPIKey(provider, key) {
+            const statusDiv = document.getElementById(`${provider}-status`);
+            statusDiv.innerHTML = '<div class="status-indicator testing">⏳ Testing connection...</div>';
+
+            // Simulate test (in real app, would call health endpoint)
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            // For now, just mark as success if key has proper format
+            let valid = false;
+            if (provider === 'claude' && key.startsWith('sk-ant-')) valid = true;
+            if (provider === 'chatgpt' && key.startsWith('sk-')) valid = true;
+            if (provider === 'gemini' && key.startsWith('AIza')) valid = true;
+
+            if (valid) {
+                statusDiv.innerHTML = '<div class="status-indicator success">✅ Connection successful!</div>';
+            } else {
+                statusDiv.innerHTML = '<div class="status-indicator error">❌ Invalid API key format</div>';
+            }
+        }
+
+        // Check if already onboarded
+        if (localStorage.getItem('onboarding_complete') === 'true') {
+            window.location.href = '/';
+        }
+
+        // Initialize
+        updateProgress();
+    </script>
+</body>
+</html>

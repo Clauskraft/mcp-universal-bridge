@@ -497,6 +497,11 @@
     </div>
 
     <script>
+        // Check if onboarding is complete
+        if (localStorage.getItem('onboarding_complete') !== 'true') {
+            window.location.href = '/onboarding.html';
+        }
+
         const API_BASE = 'http://localhost:3000';
         let currentSession = null;
         let currentDevice = null;
