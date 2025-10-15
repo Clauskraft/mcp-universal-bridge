@@ -207,6 +207,98 @@
             margin-bottom: 0.25rem;
         }
 
+        .transparency-panel {
+            margin-top: 0.75rem;
+            border-top: 1px solid var(--border);
+            padding-top: 0.75rem;
+        }
+
+        .transparency-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .transparency-toggle:hover {
+            background: #f0f0f0;
+        }
+
+        .transparency-content {
+            margin-top: 0.5rem;
+            padding: 0.75rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            display: none;
+        }
+
+        .transparency-content.open {
+            display: block;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+        }
+
+        .provider-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: var(--tdc-blue);
+            color: white;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+
+        .tool-detail {
+            background: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+            border-left: 3px solid var(--warning);
+        }
+
+        .tool-name {
+            font-weight: 600;
+            color: var(--warning);
+            margin-bottom: 0.25rem;
+        }
+
+        .tool-args {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: monospace;
+            white-space: pre-wrap;
+            background: #f5f5f5;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            margin-top: 0.25rem;
+        }
+
         .input-area {
             border-top: 1px solid var(--border);
             padding: 1.5rem 2rem;
@@ -540,8 +632,8 @@
 
                 const data = await response.json();
 
-                // Add assistant message
-                addMessage('assistant', data.response, data.usage, data.toolCalls);
+                // Add assistant message with full transparency
+                addMessage('assistant', data.response, data.usage, data.toolCalls, data.latency, data.finishReason);
 
                 // Update stats
                 messageCount += 2;
@@ -567,34 +659,100 @@
             input.focus();
         }
 
-        function addMessage(role, content, usage, toolCalls) {
+        function addMessage(role, content, usage, toolCalls, latency, finishReason) {
             const messagesDiv = document.getElementById('messages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
 
             const avatar = role === 'user' ? '👤' : '🤖';
             const name = role === 'user' ? 'You' : 'Assistant';
+            const provider = document.getElementById('provider-select').value;
+            const model = document.getElementById('model-select').options[document.getElementById('model-select').selectedIndex].text;
 
             let html = `
                 <div class="message-header">
                     <div class="avatar">${avatar}</div>
                     <span>${name}</span>
+                    ${role === 'assistant' ? `<span class="provider-badge">${provider.toUpperCase()}</span>` : ''}
                 </div>
                 <div class="message-content">${content}</div>
             `;
 
-            if (toolCalls && toolCalls.length > 0) {
-                html += '<div class="tool-call">';
-                html += '<div class="tool-call-header">🔧 Tool Calls:</div>';
-                toolCalls.forEach(tool => {
-                    html += `<div>• ${tool.name}</div>`;
-                });
-                html += '</div>';
+            // Add transparency panel for assistant messages
+            if (role === 'assistant' && usage) {
+                const transparencyId = 'transparency_' + Date.now();
+                html += `
+                    <div class="transparency-panel">
+                        <div class="transparency-toggle" onclick="toggleTransparency('${transparencyId}')">
+                            <span id="${transparencyId}_icon">▶️</span>
+                            <span>🔍 Show Transparency Details</span>
+                        </div>
+                        <div id="${transparencyId}" class="transparency-content">
+                            <div class="info-row">
+                                <span class="info-label">🤖 Provider</span>
+                                <span class="info-value">${provider.toUpperCase()}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">🧠 Model</span>
+                                <span class="info-value">${model}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">📊 Input Tokens</span>
+                                <span class="info-value">${usage.inputTokens.toLocaleString()}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">📝 Output Tokens</span>
+                                <span class="info-value">${usage.outputTokens.toLocaleString()}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">💰 Total Cost</span>
+                                <span class="info-value">$${(usage.cost || 0).toFixed(6)}</span>
+                            </div>
+                            ${latency ? `
+                            <div class="info-row">
+                                <span class="info-label">⚡ Response Time</span>
+                                <span class="info-value">${latency}ms</span>
+                            </div>
+                            ` : ''}
+                            ${finishReason ? `
+                            <div class="info-row">
+                                <span class="info-label">🏁 Finish Reason</span>
+                                <span class="info-value">${finishReason}</span>
+                            </div>
+                            ` : ''}
+                            ${toolCalls && toolCalls.length > 0 ? `
+                                <div style="margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+                                    <div style="font-weight: 600; margin-bottom: 0.5rem;">🔧 Tool Calls (${toolCalls.length}):</div>
+                                    ${toolCalls.map(tool => `
+                                        <div class="tool-detail">
+                                            <div class="tool-name">📦 ${tool.name}</div>
+                                            ${tool.arguments ? `
+                                                <div class="tool-args">${JSON.stringify(tool.arguments, null, 2)}</div>
+                                            ` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
             }
 
             messageDiv.innerHTML = html;
             messagesDiv.appendChild(messageDiv);
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function toggleTransparency(id) {
+            const content = document.getElementById(id);
+            const icon = document.getElementById(id + '_icon');
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                icon.textContent = '▶️';
+            } else {
+                content.classList.add('open');
+                icon.textContent = '🔽';
+            }
         }
 
         // Initialize on load
