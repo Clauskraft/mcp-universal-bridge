@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - MCP Universal AI Bridge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+
+        /* TDC CVI Colors */
+        :root {
+            --tdc-blue: #0000FF;
+            --tdc-dark-blue: #00008B;
+            --tdc-light-blue: #ADD8E6;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --border: #e0e0e0;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--tdc-blue) 0%, var(--tdc-dark-blue) 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .header p { opacity: 0.9; font-size: 1.1rem; }
+
+        .nav {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+        }
+
+        .nav a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            margin-right: 1rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .nav a:hover { background: #f0f0f0; color: var(--text-primary); }
+        .nav a.active { background: var(--tdc-blue); color: white; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .card h2 { font-size: 1.5rem; color: var(--text-primary); margin-bottom: 1.5rem; border-bottom: 2px solid var(--tdc-blue); padding-bottom: 0.5rem; }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--tdc-blue);
+            box-shadow: 0 0 0 3px rgba(0, 0, 255, 0.1);
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 0.25rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: var(--tdc-blue);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--tdc-dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,255,0.3);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: var(--text-primary);
+            margin-left: 0.5rem;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.active { background: #d1fae5; color: #065f46; }
+        .badge.inactive { background: #fee2e2; color: #991b1b; }
+
+        .provider-config {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .provider-card {
+            background: #f9fafb;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--border);
+        }
+
+        .provider-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: var(--tdc-blue);
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚙️ Settings & Configuration</h1>
+        <p>MCP Universal AI Bridge - TDC Erhverv Edition</p>
+    </div>
+
+    <div class="nav">
+        <a href="/">📊 Dashboard</a>
+        <a href="/settings.html" class="active">⚙️ Settings</a>
+        <a href="/docs.html">📚 Documentation</a>
+    </div>
+
+    <div class="container">
+        <div id="alert-container"></div>
+
+        <!-- API Keys Configuration -->
+        <div class="card">
+            <h2>🔐 API Keys</h2>
+            <div class="form-group">
+                <label>Anthropic Claude API Key</label>
+                <input type="password" id="anthropic-key" placeholder="sk-ant-api03-...">
+                <small>Din Anthropic API key for Claude modeller</small>
+            </div>
+            <div class="form-group">
+                <label>OpenAI ChatGPT API Key</label>
+                <input type="password" id="openai-key" placeholder="sk-proj-...">
+                <small>Din OpenAI API key for ChatGPT modeller</small>
+            </div>
+            <div class="form-group">
+                <label>Google Gemini API Key</label>
+                <input type="password" id="google-key" placeholder="AIza...">
+                <small>Din Google API key for Gemini modeller</small>
+            </div>
+            <button class="btn btn-primary" onclick="saveApiKeys()">💾 Gem API Keys</button>
+            <button class="btn btn-secondary" onclick="loadApiKeys()">🔄 Hent Nuværende</button>
+        </div>
+
+        <!-- Provider Configuration -->
+        <div class="card">
+            <h2>🤖 AI Provider Indstillinger</h2>
+            <div class="provider-config">
+                <div class="provider-card">
+                    <h3>Claude (Anthropic)</h3>
+                    <div class="form-group">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Aktiveret</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="claude-enabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Standard Model</label>
+                        <select id="claude-model">
+                            <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                            <option value="claude-opus-4-5">Claude Opus 4.5</option>
+                            <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
+                            <option value="claude-3-5-haiku">Claude 3.5 Haiku</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="provider-card">
+                    <h3>ChatGPT (OpenAI)</h3>
+                    <div class="form-group">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Aktiveret</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="chatgpt-enabled" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Standard Model</label>
+                        <select id="chatgpt-model">
+                            <option value="gpt-4o">GPT-4o</option>
+                            <option value="gpt-4o-mini">GPT-4o Mini</option>
+                            <option value="o1">O1</option>
+                            <option value="o1-mini">O1 Mini</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="provider-card">
+                    <h3>Gemini (Google)</h3>
+                    <div class="form-group">
+                        <label style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Aktiveret</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="gemini-enabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>Standard Model</label>
+                        <select id="gemini-model">
+                            <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveProviderSettings()">💾 Gem Provider Indstillinger</button>
+        </div>
+
+        <!-- Server Configuration -->
+        <div class="card">
+            <h2>🔧 Server Konfiguration</h2>
+            <div class="form-group">
+                <label>Server Port</label>
+                <input type="number" id="server-port" value="3000" min="1000" max="65535">
+                <small>Port som serveren kører på (kræver genstart)</small>
+            </div>
+            <div class="form-group">
+                <label>Session Timeout (minutter)</label>
+                <input type="number" id="session-timeout" value="30" min="5" max="1440">
+                <small>Hvor længe sessioner skal holdes aktive uden aktivitet</small>
+            </div>
+            <div class="form-group">
+                <label>Max Concurrent Sessions</label>
+                <input type="number" id="max-sessions" value="100" min="1" max="1000">
+                <small>Maksimalt antal samtidige sessioner</small>
+            </div>
+            <button class="btn btn-primary" onclick="saveServerConfig()">💾 Gem Server Konfiguration</button>
+        </div>
+
+        <!-- Rate Limiting -->
+        <div class="card">
+            <h2>⚡ Rate Limiting</h2>
+            <div class="form-group">
+                <label>Requests Per Minute</label>
+                <input type="number" id="rate-limit-rpm" value="100" min="1" max="1000">
+                <small>Maksimalt antal requests per minut per API key</small>
+            </div>
+            <div class="form-group">
+                <label>Tokens Per Hour</label>
+                <input type="number" id="rate-limit-tokens" value="100000" min="1000" max="10000000">
+                <small>Maksimalt antal tokens per time</small>
+            </div>
+            <button class="btn btn-primary" onclick="saveRateLimits()">💾 Gem Rate Limits</button>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="card" style="border: 2px solid var(--error);">
+            <h2 style="border-bottom-color: var(--error); color: var(--error);">⚠️ Danger Zone</h2>
+            <p style="margin-bottom: 1rem; color: var(--text-secondary);">
+                Disse handlinger kan ikke fortrydes. Vær sikker på hvad du gør!
+            </p>
+            <button class="btn btn-danger" onclick="resetStats()">🗑️ Nulstil Statistikker</button>
+            <button class="btn btn-danger" onclick="clearAllSessions()" style="margin-left: 0.5rem;">🧹 Ryd Alle Sessioner</button>
+            <button class="btn btn-danger" onclick="clearCache()" style="margin-left: 0.5rem;">💨 Ryd Cache</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function loadApiKeys() {
+            showAlert('API keys kan ikke hentes fra serveren af sikkerhedsmæssige årsager. De er gemt i .env filen.', 'error');
+        }
+
+        function saveApiKeys() {
+            const anthropic = document.getElementById('anthropic-key').value;
+            const openai = document.getElementById('openai-key').value;
+            const google = document.getElementById('google-key').value;
+
+            if (!anthropic && !openai && !google) {
+                showAlert('Indtast mindst én API key', 'error');
+                return;
+            }
+
+            // I praksis skal dette gemmes via API endpoint
+            showAlert('⚠️ API keys skal opdateres i .env filen på serveren. Denne funktion implementeres senere.', 'error');
+        }
+
+        function saveProviderSettings() {
+            const settings = {
+                claude: {
+                    enabled: document.getElementById('claude-enabled').checked,
+                    model: document.getElementById('claude-model').value
+                },
+                chatgpt: {
+                    enabled: document.getElementById('chatgpt-enabled').checked,
+                    model: document.getElementById('chatgpt-model').value
+                },
+                gemini: {
+                    enabled: document.getElementById('gemini-enabled').checked,
+                    model: document.getElementById('gemini-model').value
+                }
+            };
+
+            localStorage.setItem('providerSettings', JSON.stringify(settings));
+            showAlert('✅ Provider indstillinger gemt!');
+        }
+
+        function saveServerConfig() {
+            const config = {
+                port: document.getElementById('server-port').value,
+                sessionTimeout: document.getElementById('session-timeout').value,
+                maxSessions: document.getElementById('max-sessions').value
+            };
+
+            localStorage.setItem('serverConfig', JSON.stringify(config));
+            showAlert('✅ Server konfiguration gemt! (Kræver genstart)');
+        }
+
+        function saveRateLimits() {
+            const limits = {
+                rpm: document.getElementById('rate-limit-rpm').value,
+                tokensPerHour: document.getElementById('rate-limit-tokens').value
+            };
+
+            localStorage.setItem('rateLimits', JSON.stringify(limits));
+            showAlert('✅ Rate limits gemt!');
+        }
+
+        async function resetStats() {
+            if (!confirm('Er du sikker på at du vil nulstille alle statistikker?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/stats/reset`, { method: 'POST' });
+                const data = await response.json();
+                showAlert('✅ Statistikker nulstillet!');
+            } catch (error) {
+                showAlert('❌ Fejl: ' + error.message, 'error');
+            }
+        }
+
+        async function clearAllSessions() {
+            if (!confirm('Er du sikker på at du vil rydde alle sessioner?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/cleanup`, { method: 'POST' });
+                const data = await response.json();
+                showAlert(`✅ ${data.cleaned || 0} sessioner ryddet!`);
+            } catch (error) {
+                showAlert('❌ Fejl: ' + error.message, 'error');
+            }
+        }
+
+        function clearCache() {
+            if (!confirm('Er du sikker på at du vil rydde cachen?')) return;
+
+            localStorage.clear();
+            showAlert('✅ Browser cache ryddet!');
+        }
+
+        // Load saved settings
+        window.onload = function() {
+            const providerSettings = JSON.parse(localStorage.getItem('providerSettings') || '{}');
+            if (providerSettings.claude) {
+                document.getElementById('claude-enabled').checked = providerSettings.claude.enabled;
+                document.getElementById('claude-model').value = providerSettings.claude.model;
+            }
+            if (providerSettings.chatgpt) {
+                document.getElementById('chatgpt-enabled').checked = providerSettings.chatgpt.enabled;
+                document.getElementById('chatgpt-model').value = providerSettings.chatgpt.model;
+            }
+            if (providerSettings.gemini) {
+                document.getElementById('gemini-enabled').checked = providerSettings.gemini.enabled;
+                document.getElementById('gemini-model').value = providerSettings.gemini.model;
+            }
+
+            const serverConfig = JSON.parse(localStorage.getItem('serverConfig') || '{}');
+            if (serverConfig.port) document.getElementById('server-port').value = serverConfig.port;
+            if (serverConfig.sessionTimeout) document.getElementById('session-timeout').value = serverConfig.sessionTimeout;
+            if (serverConfig.maxSessions) document.getElementById('max-sessions').value = serverConfig.maxSessions;
+
+            const rateLimits = JSON.parse(localStorage.getItem('rateLimits') || '{}');
+            if (rateLimits.rpm) document.getElementById('rate-limit-rpm').value = rateLimits.rpm;
+            if (rateLimits.tokensPerHour) document.getElementById('rate-limit-tokens').value = rateLimits.tokensPerHour;
+        };
+    </script>
+</body>
+</html>

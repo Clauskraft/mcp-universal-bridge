@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    <pre id="output">Loading...</pre>
+
+    <script>
+        const output = document.getElementById('output');
+
+        async function test() {
+            try {
+                output.textContent = 'Fetching from http://localhost:3000/stats...\n';
+
+                const response = await fetch('http://localhost:3000/stats');
+                output.textContent += `Response status: ${response.status}\n`;
+                output.textContent += `Response headers: ${JSON.stringify([...response.headers])}\n`;
+
+                const data = await response.json();
+                output.textContent += '\nData received:\n' + JSON.stringify(data, null, 2);
+            } catch (error) {
+                output.textContent += '\n\nERROR: ' + error.message + '\n' + error.stack;
+                console.error('Full error:', error);
+            }
+        }
+
+        test();
+    </script>
+</body>
+</html>
