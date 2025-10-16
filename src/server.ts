@@ -4,6 +4,8 @@ import { logger } from 'hono/logger';
 import { sessionManager } from './utils/session.js';
 import { providerManager } from './providers/manager.js';
 import { databaseManager, databaseTools } from './tools/database.js';
+import { hybridAgent } from './tools/automation/agent.js';
+import { UITarsAutomation } from './tools/automation/uitars.js';
 import {
   RegisterDeviceRequestSchema,
   CreateSessionRequestSchema,
@@ -434,6 +436,88 @@ app.get('/database/tools', (c) => {
   return c.json({
     tools: databaseTools,
     message: 'Available database tools for AI',
+  });
+});
+
+// ==================== Hybrid Automation ====================
+
+app.post('/automation/execute', async (c) => {
+  const body = await c.req.json();
+  const task = body;
+
+  const result = await hybridAgent.execute(task);
+
+  return c.json(result);
+});
+
+app.get('/automation/metrics', (c) => {
+  const metrics = hybridAgent.getMetrics();
+  return c.json(metrics);
+});
+
+app.post('/automation/uitars/install', async (c) => {
+  const result = await UITarsAutomation.install();
+  return c.json(result);
+});
+
+app.get('/automation/tools', (c) => {
+  return c.json({
+    tools: [
+      {
+        name: 'automate_browser',
+        description: 'Automate browser interactions using hybrid Playwright/UI-TARS. Intelligently chooses the best tool for the task.',
+        input_schema: {
+          type: 'object',
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['web', 'mobile', 'desktop', 'game'],
+              description: 'Platform type',
+            },
+            action: {
+              type: 'string',
+              enum: ['click', 'type', 'navigate', 'extract', 'screenshot', 'understand', 'test'],
+              description: 'Action to perform',
+            },
+            description: {
+              type: 'string',
+              description: 'Human-readable description of what to do',
+            },
+            target: {
+              type: 'string',
+              description: 'CSS selector or visual description of target element',
+            },
+            url: {
+              type: 'string',
+              description: 'URL to navigate to (for navigate action)',
+            },
+            value: {
+              type: 'string',
+              description: 'Text to type (for type action)',
+            },
+            options: {
+              type: 'object',
+              properties: {
+                screenshot: {
+                  type: 'boolean',
+                  description: 'Take screenshot after action',
+                },
+                wait: {
+                  type: 'number',
+                  description: 'Wait time in ms after action',
+                },
+                validate: {
+                  type: 'boolean',
+                  description: 'Validate result',
+                },
+              },
+            },
+          },
+          required: ['type', 'action', 'description'],
+        },
+      },
+    ],
+    message: 'Hybrid automation tools for AI',
   });
 });
 
