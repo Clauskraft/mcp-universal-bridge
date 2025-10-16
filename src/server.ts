@@ -5,6 +5,7 @@ import { sessionManager } from './utils/session.js';
 import { providerManager } from './providers/manager.js';
 import { databaseManager, databaseTools } from './tools/database.js';
 import { visualizationManager, visualizationTools } from './tools/visualization.js';
+import { aiCollaborationManager, collaborationTools } from './tools/ai-collaboration.js';
 import { hybridAgent } from './tools/automation/agent.js';
 import { UITarsAutomation } from './tools/automation/uitars.js';
 import {
@@ -541,6 +542,55 @@ app.get('/tests/report', async (c) => {
 
   const report = testOrchestrator.generateReport();
   return c.text(report);
+});
+
+// ==================== AI Collaboration ====================
+
+app.post('/collaboration/start', async (c) => {
+  const body = await c.req.json();
+  const { primaryAI, consultAI, topic, question, files, code, showFullConversation } = body;
+
+  const result = await aiCollaborationManager.collaborate({
+    primaryAI,
+    consultAI,
+    topic,
+    context: {
+      files,
+      code,
+      question,
+    },
+    showFullConversation: showFullConversation !== false,
+  });
+
+  return c.json(result);
+});
+
+app.get('/collaboration/conversations', (c) => {
+  const conversations = aiCollaborationManager.getAllConversations();
+  return c.json({ conversations });
+});
+
+app.get('/collaboration/conversations/:id', (c) => {
+  const id = c.req.param('id');
+  const conversation = aiCollaborationManager.getConversation(id);
+
+  if (!conversation) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
+  return c.json({ conversation });
+});
+
+app.get('/collaboration/stats', (c) => {
+  const stats = aiCollaborationManager.getStatistics();
+  return c.json(stats);
+});
+
+app.get('/collaboration/tools', (c) => {
+  return c.json({
+    tools: collaborationTools,
+    message: 'AI collaboration tools for multi-AI discussions',
+  });
 });
 
 // ==================== Hybrid Automation ====================
