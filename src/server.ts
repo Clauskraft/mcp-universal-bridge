@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { sessionManager } from './utils/session.js';
 import { providerManager } from './providers/manager.js';
+import { databaseManager, databaseTools } from './tools/database.js';
 import {
   RegisterDeviceRequestSchema,
   CreateSessionRequestSchema,
@@ -381,6 +382,58 @@ app.get('/providers/:id/models', (c) => {
   return c.json({
     provider: providerId,
     models,
+  });
+});
+
+// ==================== Database Management ====================
+
+app.post('/database/connections', async (c) => {
+  const body = await c.req.json();
+  const { name, config } = body;
+
+  const connectionId = databaseManager.registerConnection(name, config);
+
+  return c.json({
+    connectionId,
+    message: 'Database connection registered successfully',
+  }, 201);
+});
+
+app.get('/database/connections', (c) => {
+  const connections = databaseManager.getConnections();
+  return c.json({ connections });
+});
+
+app.post('/database/connections/:id/test', async (c) => {
+  const id = c.req.param('id');
+  const result = await databaseManager.testConnection(id);
+
+  return c.json(result);
+});
+
+app.post('/database/query', async (c) => {
+  const body = await c.req.json();
+  const { connectionId, query } = body;
+
+  const result = await databaseManager.executeQuery(connectionId, query);
+
+  return c.json(result);
+});
+
+app.delete('/database/connections/:id', async (c) => {
+  const id = c.req.param('id');
+  await databaseManager.disconnect(id);
+  const removed = databaseManager.removeConnection(id);
+
+  return c.json({
+    message: removed ? 'Connection removed successfully' : 'Connection not found',
+  });
+});
+
+app.get('/database/tools', (c) => {
+  return c.json({
+    tools: databaseTools,
+    message: 'Available database tools for AI',
   });
 });
 
