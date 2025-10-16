@@ -6,6 +6,7 @@ import { providerManager } from './providers/manager.js';
 import { databaseManager, databaseTools } from './tools/database.js';
 import { visualizationManager, visualizationTools } from './tools/visualization.js';
 import { aiCollaborationManager, collaborationTools } from './tools/ai-collaboration.js';
+import { githubManager, githubTools } from './tools/github-integration.js';
 import { hybridAgent } from './tools/automation/agent.js';
 import { UITarsAutomation } from './tools/automation/uitars.js';
 import {
@@ -590,6 +591,235 @@ app.get('/collaboration/tools', (c) => {
   return c.json({
     tools: collaborationTools,
     message: 'AI collaboration tools for multi-AI discussions',
+  });
+});
+
+// ==================== GitHub Integration ====================
+
+app.post('/github/connections', async (c) => {
+  const body = await c.req.json();
+  const { name, token, owner, baseUrl } = body;
+
+  const result = githubManager.registerConnection({ name, token, owner, baseUrl });
+
+  return c.json(result, 201);
+});
+
+app.get('/github/connections', (c) => {
+  const connections = githubManager.listConnections();
+  return c.json({ connections });
+});
+
+app.post('/github/connections/:id/test', async (c) => {
+  const id = c.req.param('id');
+  const result = await githubManager.testConnection(id);
+
+  return c.json(result);
+});
+
+app.delete('/github/connections/:id', (c) => {
+  const id = c.req.param('id');
+  const result = githubManager.removeConnection(id);
+
+  return c.json(result);
+});
+
+app.get('/github/:connectionId/repos', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.query('owner');
+  const type = c.req.query('type') as 'all' | 'owner' | 'member' | undefined;
+  const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
+
+  const repos = await githubManager.listRepositories(connectionId, { owner, type, limit });
+
+  return c.json({ repositories: repos });
+});
+
+app.get('/github/:connectionId/repos/:owner/:repo', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+
+  const repository = await githubManager.getRepository(connectionId, owner, repo);
+
+  return c.json({ repository });
+});
+
+app.get('/github/:connectionId/repos/:owner/:repo/file', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const path = c.req.query('path');
+  const ref = c.req.query('ref');
+
+  if (!path) {
+    return c.json({ error: 'File path is required' }, 400);
+  }
+
+  const file = await githubManager.getFileContent(connectionId, owner, repo, path, ref);
+
+  return c.json({ file });
+});
+
+app.get('/github/:connectionId/repos/:owner/:repo/branches', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+
+  const branches = await githubManager.listBranches(connectionId, owner, repo);
+
+  return c.json({ branches });
+});
+
+app.post('/github/:connectionId/repos/:owner/:repo/pulls', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const body = await c.req.json();
+
+  const { title, body: prBody, head, base, draft } = body;
+
+  const pullRequest = await githubManager.createPullRequest({
+    connectionId,
+    owner,
+    repo,
+    title,
+    body: prBody,
+    head,
+    base,
+    draft,
+  });
+
+  return c.json({ pullRequest }, 201);
+});
+
+app.get('/github/:connectionId/repos/:owner/:repo/pulls', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const state = c.req.query('state') as 'open' | 'closed' | 'all' | undefined;
+  const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
+
+  const pullRequests = await githubManager.listPullRequests(connectionId, owner, repo, { state, limit });
+
+  return c.json({ pullRequests });
+});
+
+app.get('/github/:connectionId/repos/:owner/:repo/pulls/:number', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const number = parseInt(c.req.param('number'));
+
+  const pullRequest = await githubManager.getPullRequest(connectionId, owner, repo, number);
+
+  return c.json({ pullRequest });
+});
+
+app.post('/github/:connectionId/repos/:owner/:repo/pulls/:number/reviews', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const prNumber = parseInt(c.req.param('number'));
+  const body = await c.req.json();
+
+  const { event, body: reviewBody, comments } = body;
+
+  const result = await githubManager.createReview({
+    connectionId,
+    owner,
+    repo,
+    prNumber,
+    event,
+    body: reviewBody,
+    comments,
+  });
+
+  return c.json(result, 201);
+});
+
+app.put('/github/:connectionId/repos/:owner/:repo/pulls/:number/merge', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const prNumber = parseInt(c.req.param('number'));
+  const body = await c.req.json();
+
+  const { commitTitle, commitMessage, mergeMethod } = body || {};
+
+  const result = await githubManager.mergePullRequest(connectionId, owner, repo, prNumber, {
+    commitTitle,
+    commitMessage,
+    mergeMethod,
+  });
+
+  return c.json(result);
+});
+
+app.post('/github/:connectionId/repos/:owner/:repo/issues', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const body = await c.req.json();
+
+  const { title, body: issueBody, labels, assignees } = body;
+
+  const issue = await githubManager.createIssue({
+    connectionId,
+    owner,
+    repo,
+    title,
+    body: issueBody,
+    labels,
+    assignees,
+  });
+
+  return c.json({ issue }, 201);
+});
+
+app.get('/github/:connectionId/repos/:owner/:repo/issues', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const state = c.req.query('state') as 'open' | 'closed' | 'all' | undefined;
+  const labelsQuery = c.req.query('labels');
+  const labels = labelsQuery ? labelsQuery.split(',') : undefined;
+  const limit = c.req.query('limit') ? parseInt(c.req.query('limit')!) : undefined;
+
+  const issues = await githubManager.listIssues(connectionId, owner, repo, { state, labels, limit });
+
+  return c.json({ issues });
+});
+
+app.post('/github/:connectionId/repos/:owner/:repo/issues/:number/comments', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const issueNumber = parseInt(c.req.param('number'));
+  const body = await c.req.json();
+
+  const { body: commentBody } = body;
+
+  const result = await githubManager.addComment(connectionId, owner, repo, issueNumber, commentBody);
+
+  return c.json(result, 201);
+});
+
+app.patch('/github/:connectionId/repos/:owner/:repo/issues/:number/close', async (c) => {
+  const connectionId = c.req.param('connectionId');
+  const owner = c.req.param('owner');
+  const repo = c.req.param('repo');
+  const issueNumber = parseInt(c.req.param('number'));
+
+  const result = await githubManager.closeIssue(connectionId, owner, repo, issueNumber);
+
+  return c.json(result);
+});
+
+app.get('/github/tools', (c) => {
+  return c.json({
+    tools: githubTools,
+    message: 'GitHub integration tools for AI',
   });
 });
 
