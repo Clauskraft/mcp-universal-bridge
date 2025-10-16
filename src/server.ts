@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { sessionManager } from './utils/session.js';
 import { providerManager } from './providers/manager.js';
 import { databaseManager, databaseTools } from './tools/database.js';
+import { visualizationManager, visualizationTools } from './tools/visualization.js';
 import { hybridAgent } from './tools/automation/agent.js';
 import { UITarsAutomation } from './tools/automation/uitars.js';
 import {
@@ -437,6 +438,109 @@ app.get('/database/tools', (c) => {
     tools: databaseTools,
     message: 'Available database tools for AI',
   });
+});
+
+// ==================== Visualization ====================
+
+app.post('/visualization/create', async (c) => {
+  const body = await c.req.json();
+  const { type, data, labels, datasets, title, options } = body;
+
+  const result = visualizationManager.createChart({
+    type,
+    data: {
+      labels,
+      datasets,
+    },
+    options: {
+      title,
+      ...options,
+    },
+  });
+
+  return c.json(result);
+});
+
+app.post('/visualization/from-query', async (c) => {
+  const body = await c.req.json();
+  const { queryResults, chartType, xField, yField, title } = body;
+
+  const result = visualizationManager.createChartFromQuery(queryResults, chartType, {
+    xField,
+    yField,
+    title,
+  });
+
+  return c.json(result);
+});
+
+app.post('/visualization/suggest', async (c) => {
+  const body = await c.req.json();
+  const { data } = body;
+
+  const suggestion = visualizationManager.suggestChartType(data);
+  return c.json(suggestion);
+});
+
+app.get('/visualization/charts', (c) => {
+  const charts = visualizationManager.getAllCharts();
+  return c.json({ charts });
+});
+
+app.get('/visualization/charts/:id', (c) => {
+  const chartId = c.req.param('id');
+  const chart = visualizationManager.getChart(chartId);
+
+  if (!chart) {
+    return c.json({ error: 'Chart not found' }, 404);
+  }
+
+  return c.json({ chart });
+});
+
+app.delete('/visualization/charts/:id', (c) => {
+  const chartId = c.req.param('id');
+  const deleted = visualizationManager.deleteChart(chartId);
+
+  return c.json({
+    success: deleted,
+    message: deleted ? 'Chart deleted successfully' : 'Chart not found',
+  });
+});
+
+app.get('/visualization/tools', (c) => {
+  return c.json({
+    tools: visualizationTools,
+    message: 'Available visualization tools for AI',
+  });
+});
+
+// ==================== Testing ====================
+
+app.post('/tests/run', async (c) => {
+  const body = await c.req.json();
+  const { suites } = body || { suites: ['all'] };
+
+  // Dynamic import to avoid circular dependency
+  const { testOrchestrator } = await import('./tests/test-orchestrator.js');
+
+  const results = await testOrchestrator.runAll();
+
+  return c.json(results);
+});
+
+app.get('/tests/results', async (c) => {
+  const { testOrchestrator } = await import('./tests/test-orchestrator.js');
+
+  const results = testOrchestrator.getResults();
+  return c.json({ results });
+});
+
+app.get('/tests/report', async (c) => {
+  const { testOrchestrator } = await import('./tests/test-orchestrator.js');
+
+  const report = testOrchestrator.generateReport();
+  return c.text(report);
 });
 
 // ==================== Hybrid Automation ====================
