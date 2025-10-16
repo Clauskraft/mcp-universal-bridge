@@ -45,6 +45,24 @@
             border-radius: 6px;
             transition: all 0.2s;
             font-size: 0.9rem;
+            min-height: 48px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* Mobile navigation improvements */
+        @media (max-width: 768px) {
+            .nav {
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .nav a {
+                font-size: 0.85rem;
+                padding: 0.75rem 1rem;
+                margin-right: 0.5rem;
+            }
         }
 
         .nav a:hover { background: #f0f0f0; color: var(--text-primary); }
@@ -54,6 +72,7 @@
             display: flex;
             flex: 1;
             overflow: hidden;
+            position: relative;
         }
 
         .sidebar {
@@ -62,6 +81,39 @@
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        /* Mobile: Sidebar as overlay */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                z-index: 1000;
+                transform: translateX(-100%);
+                box-shadow: 2px 0 8px rgba(0,0,0,0.2);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.open {
+                display: block;
+            }
         }
 
         .sidebar-header {
@@ -164,6 +216,7 @@
             align-items: center;
             justify-content: center;
             font-size: 0.875rem;
+            user-select: none;
         }
 
         .message.user .avatar {
@@ -325,9 +378,30 @@
         }
 
         .input-field:focus {
-            outline: none;
+            outline: 2px solid var(--tdc-blue);
+            outline-offset: 2px;
             border-color: var(--tdc-blue);
             box-shadow: 0 0 0 3px rgba(0, 0, 255, 0.1);
+        }
+
+        /* Visible focus indicators for keyboard navigation */
+        a:focus,
+        button:focus,
+        select:focus,
+        input:focus,
+        textarea:focus {
+            outline: 2px solid var(--tdc-blue);
+            outline-offset: 2px;
+        }
+
+        .nav a:focus {
+            outline: 2px solid white;
+            outline-offset: 2px;
+        }
+
+        .transparency-toggle:focus {
+            outline: 2px solid var(--tdc-blue);
+            outline-offset: 2px;
         }
 
         .send-button {
@@ -339,6 +413,8 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s;
+            min-height: 48px;
+            min-width: 48px;
         }
 
         .send-button:hover {
@@ -364,6 +440,165 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Full-screen loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .loading-spinner-large {
+            width: 60px;
+            height: 60px;
+            border: 4px solid var(--tdc-light-blue);
+            border-top-color: var(--tdc-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            margin-top: 1.5rem;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .loading-subtext {
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Typing indicator (AI thinking) */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: #f0f0f0;
+            border-radius: 8px;
+            max-width: 100px;
+            margin-bottom: 1.5rem;
+        }
+
+        .typing-indicator .dot {
+            width: 8px;
+            height: 8px;
+            margin: 0 4px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.7; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            min-width: 300px;
+            max-width: 500px;
+            padding: 1rem 1.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: slideIn 0.3s ease-out;
+            z-index: 10000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(400px); opacity: 0; }
+        }
+
+        .toast.hiding {
+            animation: slideOut 0.3s ease-out forwards;
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--error);
+        }
+
+        .toast.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .toast-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .toast-message {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .toast-action {
+            font-size: 0.85rem;
+            color: var(--tdc-blue);
+            margin-top: 0.5rem;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .toast-close {
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1.25rem;
+            flex-shrink: 0;
+            transition: color 0.2s;
+        }
+
+        .toast-close:hover {
+            color: var(--text-primary);
+        }
+
         .usage-info {
             font-size: 0.75rem;
             color: var(--text-secondary);
@@ -378,18 +613,33 @@
         }
 
         .example-prompt {
-            padding: 0.5rem 1rem;
+            padding: 0.75rem 1rem;
             background: white;
             border: 1px solid var(--border);
             border-radius: 6px;
             font-size: 0.85rem;
             cursor: pointer;
             transition: all 0.2s;
+            min-height: 48px;
+            display: inline-flex;
+            align-items: center;
         }
 
         .example-prompt:hover {
             border-color: var(--tdc-blue);
             background: #f0f0ff;
+        }
+
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
         }
 
         .chart-container {
@@ -413,71 +663,194 @@
             max-width: 600px;
             height: 300px;
         }
+
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 1.25rem;
+            }
+
+            .header p {
+                font-size: 0.85rem;
+            }
+
+            .messages {
+                padding: 1rem;
+            }
+
+            .message {
+                max-width: 100%;
+            }
+
+            .input-area {
+                padding: 1rem;
+            }
+
+            .input-container {
+                flex-direction: row;
+                gap: 0.5rem;
+            }
+
+            .example-prompts {
+                gap: 0.5rem;
+            }
+
+            .chart-wrapper {
+                max-width: 100%;
+                height: 250px;
+            }
+
+            .transparency-content {
+                font-size: 0.75rem;
+                overflow-x: auto;
+            }
+
+            .tool-args {
+                font-size: 0.7rem;
+                word-break: break-all;
+            }
+        }
+
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            width: 56px;
+            height: 56px;
+            background: var(--tdc-blue);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            cursor: pointer;
+            z-index: 998;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-btn {
+                display: flex;
+            }
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" role="alert" aria-live="assertive" aria-busy="true">
+        <div class="loading-spinner-large" aria-hidden="true"></div>
+        <div class="loading-text" id="loading-text">Connecting to server...</div>
+        <div class="loading-subtext" id="loading-subtext">Please wait</div>
+    </div>
+
     <div class="header">
         <h1>💬 Interactive Chat</h1>
         <p>Talk to Claude, ChatGPT, or Gemini - with tools!</p>
     </div>
 
-    <div class="nav">
-        <a href="/">📊 Dashboard</a>
-        <a href="/chat.html" class="active">💬 Chat</a>
-        <a href="/settings.html">⚙️ Settings</a>
-        <a href="/docs.html">📚 Documentation</a>
-    </div>
+    <nav class="nav" role="navigation" aria-label="Main navigation">
+        <a href="/" aria-label="Dashboard">📊 Dashboard</a>
+        <a href="/chat.html" class="active" aria-current="page" aria-label="Chat">💬 Chat</a>
+        <a href="/mini-tools.html" aria-label="Mini Tools">🛠️ Mini Tools</a>
+        <a href="/settings.html" aria-label="Settings">⚙️ Settings</a>
+        <a href="/docs.html" aria-label="Documentation">📚 Documentation</a>
+    </nav>
+
+    <!-- Mobile sidebar overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Mobile menu button -->
+    <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Toggle settings menu">
+        ⚙️
+    </button>
 
     <div class="chat-container">
         <div class="sidebar">
             <div class="sidebar-header">
                 <h3>Configuration</h3>
-                <select class="provider-select" id="provider-select">
+                <label for="provider-select" class="visually-hidden">Select AI Provider</label>
+                <select class="provider-select" id="provider-select" aria-label="Select AI provider">
                     <option value="claude">Claude (Anthropic)</option>
                     <option value="chatgpt">ChatGPT (OpenAI)</option>
                     <option value="gemini">Gemini (Google)</option>
+                    <option value="grok">Grok (xAI)</option>
+                    <option value="ollama">Ollama (Local AI)</option>
                 </select>
-                <select class="model-select" id="model-select">
+                <label for="model-select" class="visually-hidden">Select AI Model</label>
+                <select class="model-select" id="model-select" aria-label="Select AI model">
                     <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
                     <option value="claude-3-5-haiku">Claude 3.5 Haiku</option>
                 </select>
             </div>
             <div class="sidebar-content">
-                <div class="tool-section">
-                    <h4>🔧 Available Tools</h4>
+                <div class="tool-section" role="group" aria-labelledby="tools-heading">
+                    <h4 id="tools-heading">🔧 Available Tools</h4>
                     <div class="tool-item">
-                        <input type="checkbox" id="tool-web" checked>
+                        <input type="checkbox" id="tool-web" checked aria-describedby="tool-web-desc">
                         <label for="tool-web">🌐 Web Search & Fetch</label>
+                        <span id="tool-web-desc" class="visually-hidden">Enable web search and fetch capabilities</span>
                     </div>
                     <div class="tool-item">
-                        <input type="checkbox" id="tool-file">
+                        <input type="checkbox" id="tool-file" aria-describedby="tool-file-desc">
                         <label for="tool-file">📁 File System Access</label>
+                        <span id="tool-file-desc" class="visually-hidden">Enable file system access</span>
                     </div>
                     <div class="tool-item">
-                        <input type="checkbox" id="tool-code">
+                        <input type="checkbox" id="tool-code" aria-describedby="tool-code-desc">
                         <label for="tool-code">🧮 Code Execution</label>
+                        <span id="tool-code-desc" class="visually-hidden">Enable code execution capabilities</span>
                     </div>
                     <div class="tool-item">
-                        <input type="checkbox" id="tool-db">
+                        <input type="checkbox" id="tool-db" aria-describedby="tool-db-desc" disabled>
                         <label for="tool-db">🗄️ Database Query (coming)</label>
+                        <span id="tool-db-desc" class="visually-hidden">Database query feature coming soon</span>
                     </div>
                 </div>
 
-                <div class="tool-section">
-                    <h4>ℹ️ Session Info</h4>
-                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
-                        <div>Session: <strong id="session-id">-</strong></div>
-                        <div>Messages: <strong id="message-count">0</strong></div>
-                        <div>Tokens: <strong id="token-count">0</strong></div>
-                        <div>Cost: <strong id="cost-count">$0.00</strong></div>
+                <div class="tool-section" role="region" aria-labelledby="session-heading">
+                    <h4 id="session-heading">ℹ️ Session Info</h4>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);" aria-live="polite">
+                        <div>Session: <strong id="session-id" aria-label="Session ID">-</strong></div>
+                        <div>Messages: <strong id="message-count" aria-label="Message count">0</strong></div>
+                        <div>Tokens: <strong id="token-count" aria-label="Token count">0</strong></div>
+                        <div>Cost: <strong id="cost-count" aria-label="Total cost">$0.00</strong></div>
                     </div>
+                </div>
+
+                <div class="tool-section" role="region" aria-labelledby="custom-models-heading">
+                    <h4 id="custom-models-heading">➕ Custom Models</h4>
+                    <button onclick="showAddModelModal()" style="
+                        width: 100%;
+                        padding: 0.5rem;
+                        background: var(--tdc-blue);
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        font-size: 0.85rem;
+                        cursor: pointer;
+                        margin-bottom: 0.5rem;
+                    " aria-label="Add custom model">
+                        ➕ Add Custom Model
+                    </button>
+                    <div id="custom-models-list" style="font-size: 0.85rem;"></div>
                 </div>
             </div>
         </div>
 
         <div class="chat-main">
-            <div class="messages" id="messages">
-                <div class="message assistant">
+            <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Chat messages">
+                <div class="message assistant" role="article">
                     <div class="message-header">
                         <div class="avatar">🤖</div>
                         <span>Assistant</span>
@@ -499,22 +872,23 @@
             </div>
 
             <div class="input-area">
-                <div class="example-prompts">
-                    <div class="example-prompt" onclick="setPrompt('Forklar hvad MCP Universal AI Bridge kan')">
+                <div class="example-prompts" role="group" aria-label="Example prompts">
+                    <button class="example-prompt" onclick="setPrompt('Forklar hvad MCP Universal AI Bridge kan')" aria-label="Example prompt: Explain MCP Bridge">
                         🎯 Forklar MCP Bridge
-                    </div>
-                    <div class="example-prompt" onclick="setPrompt('Hvordan kan jeg integrere dette i min app?')">
+                    </button>
+                    <button class="example-prompt" onclick="setPrompt('Hvordan kan jeg integrere dette i min app?')" aria-label="Example prompt: Integration guide">
                         🔌 Integration guide
-                    </div>
-                    <div class="example-prompt" onclick="setPrompt('Vis mig et eksempel med database query')">
+                    </button>
+                    <button class="example-prompt" onclick="setPrompt('Vis mig et eksempel med database query')" aria-label="Example prompt: Database example">
                         🗄️ Database example
-                    </div>
+                    </button>
                 </div>
                 <div class="input-container">
-                    <textarea id="message-input" class="input-field" placeholder="Skriv din besked..." rows="1"></textarea>
-                    <button id="send-button" class="send-button" onclick="sendMessage()">Send</button>
+                    <label for="message-input" class="visually-hidden">Enter your message</label>
+                    <textarea id="message-input" class="input-field" placeholder="Skriv din besked..." rows="1" aria-label="Message input"></textarea>
+                    <button id="send-button" class="send-button" onclick="sendMessage()" aria-label="Send message">Send</button>
                 </div>
-                <div class="usage-info" id="usage-info"></div>
+                <div class="usage-info" id="usage-info" role="status" aria-live="polite"></div>
             </div>
         </div>
     </div>
@@ -532,8 +906,129 @@
         let tokenCount = 0;
         let costCount = 0;
 
+        // Loading helpers
+        function showLoading(text = 'Loading...', subtext = 'Please wait') {
+            const overlay = document.getElementById('loading-overlay');
+            document.getElementById('loading-text').textContent = text;
+            document.getElementById('loading-subtext').textContent = subtext;
+            overlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.add('hidden');
+        }
+
+        function showTypingIndicator() {
+            const messagesDiv = document.getElementById('messages');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'typing-indicator';
+            typingDiv.setAttribute('role', 'status');
+            typingDiv.setAttribute('aria-live', 'polite');
+            typingDiv.setAttribute('aria-label', 'AI is typing');
+            typingDiv.innerHTML = '<div class="dot" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div><div class="dot" aria-hidden="true"></div>';
+            messagesDiv.appendChild(typingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const typingDiv = document.getElementById('typing-indicator');
+            if (typingDiv) {
+                typingDiv.remove();
+            }
+        }
+
+        // Error mapping - Convert technical errors to user-friendly messages
+        function mapError(error) {
+            const errorMap = {
+                'ECONNREFUSED': {
+                    title: 'Kan ikke forbinde til serveren',
+                    message: 'API serveren kører ikke. Start venligst backend serveren.',
+                    action: 'Start server med: npm run dev',
+                    type: 'error'
+                },
+                'PROVIDER_NOT_AVAILABLE': {
+                    title: 'AI Provider ikke tilgængelig',
+                    message: 'Den valgte AI provider er ikke konfigureret. Tjek dine API nøgler.',
+                    action: 'Gå til Settings for at konfigurere API nøgler',
+                    type: 'warning'
+                },
+                'Failed to fetch': {
+                    title: 'Netværksfejl',
+                    message: 'Kunne ikke sende anmodning. Tjek din internetforbindelse.',
+                    action: 'Prøv igen om lidt',
+                    type: 'error'
+                },
+                'Invalid API key': {
+                    title: 'Ugyldig API nøgle',
+                    message: 'Din API nøgle er ugyldig eller udløbet.',
+                    action: 'Opdater API nøgle i Settings',
+                    type: 'warning'
+                },
+                'Rate limit exceeded': {
+                    title: 'Rate limit nået',
+                    message: 'Du har sendt for mange anmodninger. Vent venligst et øjeblik.',
+                    action: 'Prøv igen om 1 minut',
+                    type: 'warning'
+                },
+                'default': {
+                    title: 'Der opstod en fejl',
+                    message: error.message || 'En ukendt fejl opstod. Prøv venligst igen.',
+                    action: 'Kontakt support hvis problemet fortsætter',
+                    type: 'error'
+                }
+            };
+
+            // Check error message against known patterns
+            for (const [key, value] of Object.entries(errorMap)) {
+                if (error.message && error.message.includes(key)) {
+                    return value;
+                }
+                if (error.code && error.code === key) {
+                    return value;
+                }
+            }
+
+            return errorMap.default;
+        }
+
+        // Toast notifications
+        function showToast(title, message, action, type = 'error') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+            toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+
+            const icons = {
+                error: '❌',
+                warning: '⚠️',
+                success: '✅'
+            };
+
+            toast.innerHTML = `
+                <div class="toast-icon" aria-hidden="true">${icons[type]}</div>
+                <div class="toast-content">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-message">${message}</div>
+                    ${action ? `<div class="toast-action" onclick="this.closest('.toast').remove()" role="button" tabindex="0" aria-label="${action}">${action}</div>` : ''}
+                </div>
+                <button class="toast-close" onclick="this.closest('.toast').remove()" aria-label="Close notification">×</button>
+            `;
+
+            document.body.appendChild(toast);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
         // Initialize
         async function init() {
+            showLoading('Connecting to server...', 'Initializing chat interface');
+
             try {
                 // Register device
                 const deviceResponse = await fetch(`${API_BASE}/devices/register`, {
@@ -553,10 +1048,21 @@
                 currentDevice = deviceData.device;
 
                 // Create session
+                showLoading('Creating session...', 'Setting up your AI assistant');
                 await createNewSession();
+
+                // Hide loading overlay - successful initialization
+                hideLoading();
             } catch (error) {
                 console.error('Init error:', error);
-                addMessage('assistant', `❌ Kunne ikke forbinde til serveren. Er API'et startet på ${API_BASE}?`);
+                hideLoading();
+
+                // Show user-friendly error
+                const friendlyError = mapError(error);
+                showToast(friendlyError.title, friendlyError.message, friendlyError.action, friendlyError.type);
+
+                // Also add error message to chat
+                addMessage('assistant', `${friendlyError.title}: ${friendlyError.message}`);
             }
 
             // Auto-resize textarea
@@ -577,6 +1083,121 @@
             // Provider change
             document.getElementById('provider-select').addEventListener('change', updateModels);
             updateModels();
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyboardShortcuts);
+        }
+
+        // Keyboard shortcut handler
+        function handleKeyboardShortcuts(e) {
+            // Ctrl+K - New chat
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                if (confirm('Start ny chat? Dette vil rydde den nuværende samtale.')) {
+                    location.reload();
+                }
+                return;
+            }
+
+            // Esc - Close transparency panels / Close toasts
+            if (e.key === 'Escape') {
+                // Close all open transparency panels
+                document.querySelectorAll('.transparency-content.open').forEach(panel => {
+                    panel.classList.remove('open');
+                    const icon = document.getElementById(panel.id + '_icon');
+                    if (icon) icon.textContent = '▶️';
+                });
+
+                // Close all toasts
+                document.querySelectorAll('.toast').forEach(toast => toast.remove());
+                return;
+            }
+
+            // Alt+/ - Show help
+            if (e.altKey && e.key === '/') {
+                e.preventDefault();
+                showKeyboardHelp();
+                return;
+            }
+
+            // Ctrl+F - Search chat (focus search if we add it later, for now show message)
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                showToast('Søgefunktion', 'Chat søgning kommer snart! 🔍', null, 'success');
+                return;
+            }
+        }
+
+        // Show keyboard help modal
+        function showKeyboardHelp() {
+            const helpHtml = `
+                <div style="
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    z-index: 10001;
+                    min-width: 400px;
+                " id="help-modal">
+                    <h3 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">⌨️ Keyboard Genveje</h3>
+                    <div style="display: grid; gap: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-secondary);">Send besked</span>
+                            <kbd style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Enter</kbd>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-secondary);">Ny chat</span>
+                            <kbd style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Ctrl+K</kbd>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-secondary);">Luk paneler</span>
+                            <kbd style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Esc</kbd>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-secondary);">Vis hjælp</span>
+                            <kbd style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Alt+/</kbd>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-secondary);">Søg chat</span>
+                            <kbd style="background: #f0f0f0; padding: 0.25rem 0.5rem; border-radius: 4px; font-family: monospace;">Ctrl+F</kbd>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('help-modal').remove(); document.getElementById('help-backdrop').remove();"
+                        style="
+                            width: 100%;
+                            margin-top: 1.5rem;
+                            padding: 0.75rem;
+                            background: var(--tdc-blue);
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">
+                        Forstået
+                    </button>
+                </div>
+                <div id="help-backdrop" onclick="document.getElementById('help-modal').remove(); this.remove();"
+                    style="
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: rgba(0,0,0,0.5);
+                        z-index: 10000;
+                    ">
+                </div>
+            `;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = helpHtml;
+            document.body.appendChild(tempDiv.firstChild.nextSibling); // backdrop
+            document.body.appendChild(tempDiv.firstChild); // modal
         }
 
         async function createNewSession() {
@@ -601,30 +1222,32 @@
             document.getElementById('session-id').textContent = currentSession.id.substring(0, 12) + '...';
         }
 
-        function updateModels() {
+        async function updateModels() {
             const provider = document.getElementById('provider-select').value;
             const modelSelect = document.getElementById('model-select');
 
-            const models = {
-                claude: [
-                    { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
-                    { value: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
-                    { value: 'claude-3-5-haiku', label: 'Claude 3.5 Haiku' }
-                ],
-                chatgpt: [
-                    { value: 'gpt-4o', label: 'GPT-4o' },
-                    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
-                    { value: 'o1', label: 'O1' }
-                ],
-                gemini: [
-                    { value: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash' },
-                    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' }
-                ]
-            };
+            try {
+                // Fetch models dynamically from backend
+                const response = await fetch(`${API_BASE}/providers/${provider}/models`);
+                const data = await response.json();
 
-            modelSelect.innerHTML = models[provider].map(m =>
-                `<option value="${m.value}">${m.label}</option>`
-            ).join('');
+                if (data.models && data.models.length > 0) {
+                    modelSelect.innerHTML = data.models.map(m => {
+                        // Handle both string and object formats
+                        if (typeof m === 'string') {
+                            return `<option value="${m}">${m}</option>`;
+                        } else {
+                            return `<option value="${m.value}">${m.label}</option>`;
+                        }
+                    }).join('');
+                } else {
+                    modelSelect.innerHTML = '<option value="">No models available</option>';
+                }
+            } catch (error) {
+                console.error('Failed to fetch models:', error);
+                // Fallback to empty
+                modelSelect.innerHTML = '<option value="">Error loading models</option>';
+            }
         }
 
         function setPrompt(text) {
@@ -647,6 +1270,9 @@
             input.value = '';
             input.style.height = 'auto';
 
+            // Show typing indicator
+            showTypingIndicator();
+
             try {
                 // Send to API
                 const response = await fetch(`${API_BASE}/chat`, {
@@ -659,6 +1285,9 @@
                 });
 
                 const data = await response.json();
+
+                // Hide typing indicator
+                hideTypingIndicator();
 
                 // Add assistant message with full transparency
                 addMessage('assistant', data.response, data.usage, data.toolCalls, data.latency, data.finishReason);
@@ -677,7 +1306,15 @@
                     `${data.usage.totalTokens} tokens • $${(data.usage.cost || 0).toFixed(4)} • ${data.latency}ms`;
 
             } catch (error) {
-                addMessage('assistant', `❌ Error: ${error.message}`, null, null);
+                // Hide typing indicator on error
+                hideTypingIndicator();
+
+                // Show user-friendly error
+                const friendlyError = mapError(error);
+                showToast(friendlyError.title, friendlyError.message, friendlyError.action, friendlyError.type);
+
+                // Also add error message to chat
+                addMessage('assistant', `${friendlyError.title}: ${friendlyError.message}`);
             }
 
             // Re-enable input
@@ -699,9 +1336,9 @@
 
             let html = `
                 <div class="message-header">
-                    <div class="avatar">${avatar}</div>
+                    <div class="avatar" aria-hidden="true">${avatar}</div>
                     <span>${name}</span>
-                    ${role === 'assistant' ? `<span class="provider-badge">${provider.toUpperCase()}</span>` : ''}
+                    ${role === 'assistant' ? `<span class="provider-badge" aria-label="Provider: ${provider}">${provider.toUpperCase()}</span>` : ''}
                 </div>
                 <div class="message-content">${content}</div>
             `;
@@ -711,11 +1348,12 @@
                 const transparencyId = 'transparency_' + Date.now();
                 html += `
                     <div class="transparency-panel">
-                        <div class="transparency-toggle" onclick="toggleTransparency('${transparencyId}')">
-                            <span id="${transparencyId}_icon">▶️</span>
+                        <button class="transparency-toggle" onclick="toggleTransparency('${transparencyId}')"
+                                aria-expanded="false" aria-controls="${transparencyId}" aria-label="Toggle transparency details">
+                            <span id="${transparencyId}_icon" aria-hidden="true">▶️</span>
                             <span>🔍 Show Transparency Details</span>
-                        </div>
-                        <div id="${transparencyId}" class="transparency-content">
+                        </button>
+                        <div id="${transparencyId}" class="transparency-content" role="region" aria-label="Transparency details">
                             <div class="info-row">
                                 <span class="info-label">🤖 Provider</span>
                                 <span class="info-value">${provider.toUpperCase()}</span>
@@ -774,12 +1412,15 @@
         function toggleTransparency(id) {
             const content = document.getElementById(id);
             const icon = document.getElementById(id + '_icon');
+            const button = icon.closest('button');
             if (content.classList.contains('open')) {
                 content.classList.remove('open');
                 icon.textContent = '▶️';
+                button.setAttribute('aria-expanded', 'false');
             } else {
                 content.classList.add('open');
                 icon.textContent = '🔽';
+                button.setAttribute('aria-expanded', 'true');
             }
         }
 
@@ -829,8 +1470,215 @@
             }
         }
 
+        // Toggle sidebar for mobile
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+
+        // ==================== Custom Models Management ====================
+
+        async function loadCustomModels() {
+            try {
+                const response = await fetch(`${API_BASE}/models/custom`);
+                const data = await response.json();
+
+                const listDiv = document.getElementById('custom-models-list');
+                if (data.models && data.models.length > 0) {
+                    listDiv.innerHTML = data.models.map(model => `
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 0.5rem;
+                            background: #f9fafb;
+                            border-radius: 4px;
+                            margin-bottom: 0.25rem;
+                        ">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: var(--text-primary);">${model.displayName}</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary);">${model.provider} - ${model.modelId}</div>
+                            </div>
+                            <button onclick="deleteCustomModel('${model.id}')" style="
+                                background: var(--error);
+                                color: white;
+                                border: none;
+                                padding: 0.25rem 0.5rem;
+                                border-radius: 4px;
+                                cursor: pointer;
+                                font-size: 0.75rem;
+                            " aria-label="Delete ${model.displayName}">
+                                🗑️
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    listDiv.innerHTML = '<div style="color: var(--text-secondary); padding: 0.5rem;">No custom models</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load custom models:', error);
+            }
+        }
+
+        function showAddModelModal() {
+            const modalHtml = `
+                <div style="
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: white;
+                    padding: 2rem;
+                    border-radius: 12px;
+                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+                    z-index: 10001;
+                    min-width: 400px;
+                    max-width: 90vw;
+                " id="add-model-modal">
+                    <h3 style="margin: 0 0 1.5rem 0; color: var(--text-primary);">➕ Add Custom Model</h3>
+                    <form id="add-model-form" style="display: grid; gap: 1rem;">
+                        <div>
+                            <label for="modal-provider" style="display: block; margin-bottom: 0.25rem; font-weight: 600; color: var(--text-primary);">Provider</label>
+                            <select id="modal-provider" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                                <option value="claude">Claude (Anthropic)</option>
+                                <option value="chatgpt">ChatGPT (OpenAI)</option>
+                                <option value="gemini">Gemini (Google)</option>
+                                <option value="grok">Grok (xAI)</option>
+                                <option value="ollama">Ollama (Local)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="modal-modelId" style="display: block; margin-bottom: 0.25rem; font-weight: 600; color: var(--text-primary);">Model ID</label>
+                            <input type="text" id="modal-modelId" required placeholder="e.g. gpt-4-turbo" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                        </div>
+                        <div>
+                            <label for="modal-displayName" style="display: block; margin-bottom: 0.25rem; font-weight: 600; color: var(--text-primary);">Display Name</label>
+                            <input type="text" id="modal-displayName" required placeholder="e.g. GPT-4 Turbo" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                        </div>
+                        <div>
+                            <label for="modal-description" style="display: block; margin-bottom: 0.25rem; font-weight: 600; color: var(--text-primary);">Description (optional)</label>
+                            <input type="text" id="modal-description" placeholder="e.g. Latest GPT-4 model" style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                        </div>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button type="submit" style="
+                                flex: 1;
+                                padding: 0.75rem;
+                                background: var(--tdc-blue);
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">
+                                Add Model
+                            </button>
+                            <button type="button" onclick="document.getElementById('add-model-modal').remove(); document.getElementById('add-model-backdrop').remove();" style="
+                                flex: 1;
+                                padding: 0.75rem;
+                                background: #f0f0f0;
+                                color: var(--text-primary);
+                                border: none;
+                                border-radius: 8px;
+                                font-weight: 600;
+                                cursor: pointer;
+                            ">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div id="add-model-backdrop" onclick="document.getElementById('add-model-modal').remove(); this.remove();" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 10000;
+                ">
+                </div>
+            `;
+
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = modalHtml;
+            document.body.appendChild(tempDiv.firstChild.nextSibling); // backdrop
+            document.body.appendChild(tempDiv.firstChild); // modal
+
+            // Add form submit handler
+            document.getElementById('add-model-form').addEventListener('submit', addCustomModel);
+        }
+
+        async function addCustomModel(e) {
+            e.preventDefault();
+
+            const provider = document.getElementById('modal-provider').value;
+            const modelId = document.getElementById('modal-modelId').value;
+            const displayName = document.getElementById('modal-displayName').value;
+            const description = document.getElementById('modal-description').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/models/custom`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        provider,
+                        modelId,
+                        displayName,
+                        description: description || undefined,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to add model');
+                }
+
+                // Close modal
+                document.getElementById('add-model-modal').remove();
+                document.getElementById('add-model-backdrop').remove();
+
+                // Reload models
+                await loadCustomModels();
+                await updateModels(); // Refresh model dropdown
+
+                showToast('Success', 'Custom model added successfully!', null, 'success');
+            } catch (error) {
+                console.error('Failed to add custom model:', error);
+                showToast('Error', error.message, null, 'error');
+            }
+        }
+
+        async function deleteCustomModel(id) {
+            if (!confirm('Are you sure you want to delete this custom model?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/models/custom/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete model');
+                }
+
+                // Reload models
+                await loadCustomModels();
+                await updateModels(); // Refresh model dropdown
+
+                showToast('Success', 'Custom model deleted successfully!', null, 'success');
+            } catch (error) {
+                console.error('Failed to delete custom model:', error);
+                showToast('Error', error.message, null, 'error');
+            }
+        }
+
         // Initialize on load
         init();
+        loadCustomModels();
     </script>
 </body>
 </html>

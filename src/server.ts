@@ -1,12 +1,17 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { rateLimiter } from 'hono-rate-limiter';
+import { sanitizeRequestBody, getSanitizedBody, sanitizeString, sanitizeSQLInput } from './middleware/sanitization.js';
 import { sessionManager } from './utils/session.js';
 import { providerManager } from './providers/manager.js';
 import { databaseManager, databaseTools } from './tools/database.js';
 import { visualizationManager, visualizationTools } from './tools/visualization.js';
 import { aiCollaborationManager, collaborationTools } from './tools/ai-collaboration.js';
 import { githubManager, githubTools } from './tools/github-integration.js';
+import { secretsManager, secretsTools } from './tools/secrets-manager.js';
+import { customModelsManager } from './utils/custom-models.js';
+import { transcriptProcessor } from './utils/transcript-processor.js';
 import { hybridAgent } from './tools/automation/agent.js';
 import { UITarsAutomation } from './tools/automation/uitars.js';
 import {
@@ -21,7 +26,23 @@ const app = new Hono();
 
 // ==================== Middleware ====================
 
-app.use('*', cors());
+// CORS - Restrict to frontend origin for security
+app.use('*', cors({
+  origin: 'http://localhost:8080',
+  credentials: true,
+}));
+
+// Rate limiting - Prevent DoS attacks (100 requests per minute per IP)
+app.use('*', rateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 100, // 100 requests per window
+  standardHeaders: 'draft-7',
+  keyGenerator: (c) => c.req.header('x-forwarded-for') || c.req.header('x-real-ip') || 'unknown',
+}));
+
+// Input sanitization - Prevent XSS and injection attacks
+app.use('*', sanitizeRequestBody);
+
 app.use('*', logger());
 
 // Error handler
@@ -64,6 +85,9 @@ app.get('/', (c) => {
       chat: 'POST /chat, POST /chat/stream',
       tools: 'POST /tools',
       providers: 'GET /providers, GET /providers/:id/models',
+      customModels: 'POST /models/custom, GET /models/custom, GET /models/custom/:id, PUT /models/custom/:id, DELETE /models/custom/:id, GET /models/custom/stats',
+      secrets: 'POST /secrets/set, POST /secrets/validate, POST /secrets/set-and-validate, GET /secrets/list, DELETE /secrets/:name, GET /secrets/stats, GET /secrets/tools',
+      miniTools: 'POST /mini-tools/teams-transcript, GET /mini-tools/teams-transcript, GET /mini-tools/teams-transcript/:id, DELETE /mini-tools/teams-transcript/:id, GET /mini-tools/teams-transcript/stats',
     },
     documentation: 'https://github.com/yourusername/mcp-universal-bridge',
   });
@@ -212,13 +236,13 @@ app.delete('/sessions/:id', (c) => {
 // ==================== Chat ====================
 
 app.post('/chat', async (c) => {
-  const body = await c.req.json();
-  const validated = SendMessageRequestSchema.parse(body);
+  const sanitizedBody = getSanitizedBody(c);
+  const validated = SendMessageRequestSchema.parse(sanitizedBody);
 
   const session = sessionManager.getSession(validated.sessionId);
   const provider = providerManager.getProvider(session.config.provider);
 
-  // Add user message
+  // Add user message (already sanitized)
   sessionManager.addMessage(validated.sessionId, {
     role: 'user',
     content: validated.message,
@@ -265,13 +289,13 @@ app.post('/chat', async (c) => {
 });
 
 app.post('/chat/stream', async (c) => {
-  const body = await c.req.json();
-  const validated = SendMessageRequestSchema.parse(body);
+  const sanitizedBody = getSanitizedBody(c);
+  const validated = SendMessageRequestSchema.parse(sanitizedBody);
 
   const session = sessionManager.getSession(validated.sessionId);
   const provider = providerManager.getProvider(session.config.provider);
 
-  // Add user message
+  // Add user message (already sanitized)
   sessionManager.addMessage(validated.sessionId, {
     role: 'user',
     content: validated.message,
@@ -382,12 +406,116 @@ app.get('/providers', (c) => {
 
 app.get('/providers/:id/models', (c) => {
   const providerId = c.req.param('id') as any;
-  const models = providerManager.getAvailableModels(providerId);
+  const standardModels = providerManager.getAvailableModels(providerId);
+  const customModels = customModelsManager.getModelsForDisplay(providerId);
+
+  // Format standard models as objects with value and label
+  // Add 📖 indicator for Ollama models (all open-source)
+  const formattedStandard = standardModels.map(model => ({
+    value: model,
+    label: providerId === 'ollama' ? `📖 ${model}` : model,
+  }));
 
   return c.json({
     provider: providerId,
-    models,
+    models: [...formattedStandard, ...customModels],
   });
+});
+
+// ==================== Custom Models Management ====================
+
+app.post('/models/custom', async (c) => {
+  const body = await c.req.json();
+  const { provider, modelId, displayName, description, parameters } = body;
+
+  if (!provider || !modelId || !displayName) {
+    throw new BridgeError(
+      'provider, modelId, and displayName are required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const model = customModelsManager.addModel({
+    provider,
+    modelId,
+    displayName,
+    description,
+    parameters,
+  });
+
+  return c.json(
+    {
+      model,
+      message: 'Custom model added successfully',
+    },
+    201
+  );
+});
+
+app.get('/models/custom', (c) => {
+  const provider = c.req.query('provider') as any;
+
+  const models = provider
+    ? customModelsManager.getModelsByProvider(provider)
+    : customModelsManager.getAllModels();
+
+  return c.json({ models });
+});
+
+app.get('/models/custom/:id', (c) => {
+  const id = c.req.param('id');
+  const model = customModelsManager.getModel(id);
+
+  if (!model) {
+    throw new BridgeError(
+      `Custom model ${id} not found`,
+      'MODEL_NOT_FOUND',
+      404
+    );
+  }
+
+  return c.json({ model });
+});
+
+app.put('/models/custom/:id', async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json();
+  const { modelId, displayName, description, parameters } = body;
+
+  const model = customModelsManager.updateModel(id, {
+    modelId,
+    displayName,
+    description,
+    parameters,
+  });
+
+  return c.json({
+    model,
+    message: 'Custom model updated successfully',
+  });
+});
+
+app.delete('/models/custom/:id', (c) => {
+  const id = c.req.param('id');
+  const deleted = customModelsManager.deleteModel(id);
+
+  if (!deleted) {
+    throw new BridgeError(
+      `Custom model ${id} not found`,
+      'MODEL_NOT_FOUND',
+      404
+    );
+  }
+
+  return c.json({
+    message: 'Custom model deleted successfully',
+  });
+});
+
+app.get('/models/custom/stats', (c) => {
+  const stats = customModelsManager.getStatistics();
+  return c.json(stats);
 });
 
 // ==================== Database Management ====================
@@ -417,10 +545,13 @@ app.post('/database/connections/:id/test', async (c) => {
 });
 
 app.post('/database/query', async (c) => {
-  const body = await c.req.json();
-  const { connectionId, query } = body;
+  const sanitizedBody = getSanitizedBody(c);
+  const { connectionId, query } = sanitizedBody;
 
-  const result = await databaseManager.executeQuery(connectionId, query);
+  // Additional SQL-specific sanitization
+  const sanitizedQuery = sanitizeSQLInput(query);
+
+  const result = await databaseManager.executeQuery(connectionId, sanitizedQuery);
 
   return c.json(result);
 });
@@ -823,6 +954,81 @@ app.get('/github/tools', (c) => {
   });
 });
 
+// ==================== Secrets Management ====================
+
+app.post('/secrets/set', async (c) => {
+  const body = await c.req.json();
+  const { name, value, type, provider, expiresAt, metadata } = body;
+
+  const result = secretsManager.setSecret({
+    name,
+    value,
+    type,
+    provider,
+    expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+    metadata,
+  });
+
+  return c.json(result);
+});
+
+app.post('/secrets/validate', async (c) => {
+  const body = await c.req.json();
+  const { provider, api_key } = body;
+
+  const result = await secretsManager.validateAPIKey(provider, api_key);
+
+  return c.json(result);
+});
+
+app.post('/secrets/set-and-validate', async (c) => {
+  const body = await c.req.json();
+  const { name, value, provider } = body;
+
+  const result = await secretsManager.setAndValidateAPIKey(name, value, provider);
+
+  return c.json(result);
+});
+
+app.get('/secrets/list', (c) => {
+  const secrets = secretsManager.listSecrets();
+  return c.json({ secrets });
+});
+
+app.delete('/secrets/:name', (c) => {
+  const name = c.req.param('name');
+  const result = secretsManager.deleteSecret(name);
+
+  return c.json(result);
+});
+
+app.get('/secrets/stats', (c) => {
+  const stats = secretsManager.getStatistics();
+  return c.json(stats);
+});
+
+app.post('/secrets/external/configure', async (c) => {
+  const body = await c.req.json();
+  const { type, enabled, config } = body;
+
+  const result = secretsManager.configureExternalManager({ type, enabled, config });
+
+  return c.json(result);
+});
+
+app.post('/secrets/external/sync', async (c) => {
+  const result = await secretsManager.syncWithExternal();
+
+  return c.json(result);
+});
+
+app.get('/secrets/tools', (c) => {
+  return c.json({
+    tools: secretsTools,
+    message: 'Secrets management tools for AI',
+  });
+});
+
 // ==================== Hybrid Automation ====================
 
 app.post('/automation/execute', async (c) => {
@@ -905,6 +1111,206 @@ app.get('/automation/tools', (c) => {
   });
 });
 
+// ==================== Mini Tools ====================
+
+// POST /mini-tools/teams-transcript - Process Teams transcript
+app.post('/mini-tools/teams-transcript', async (c) => {
+  const body = await c.req.json();
+  const { title, content, source } = body;
+
+  if (!title || !content || !source) {
+    throw new BridgeError(
+      'title, content, and source are required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  if (source !== 'vtt' && source !== 'text') {
+    throw new BridgeError(
+      'source must be either "vtt" or "text"',
+      'INVALID_SOURCE',
+      400
+    );
+  }
+
+  const transcript = transcriptProcessor.processTranscript(title, content, source);
+
+  return c.json(
+    {
+      transcript: {
+        id: transcript.id,
+        title: transcript.title,
+        source: transcript.source,
+        entryCount: transcript.entries.length,
+        createdAt: transcript.createdAt,
+      },
+      message: 'Transcript processed successfully',
+    },
+    201
+  );
+});
+
+// GET /mini-tools/teams-transcript - List all transcripts
+app.get('/mini-tools/teams-transcript', (c) => {
+  const transcripts = transcriptProcessor.getAllTranscripts();
+  return c.json({ transcripts });
+});
+
+// GET /mini-tools/teams-transcript/:id - Get specific transcript
+app.get('/mini-tools/teams-transcript/:id', (c) => {
+  const id = c.req.param('id');
+  const transcript = transcriptProcessor.getTranscript(id);
+
+  if (!transcript) {
+    throw new BridgeError(
+      `Transcript ${id} not found`,
+      'TRANSCRIPT_NOT_FOUND',
+      404
+    );
+  }
+
+  return c.json({ transcript });
+});
+
+// DELETE /mini-tools/teams-transcript/:id - Delete transcript
+app.delete('/mini-tools/teams-transcript/:id', (c) => {
+  const id = c.req.param('id');
+  const deleted = transcriptProcessor.deleteTranscript(id);
+
+  if (!deleted) {
+    throw new BridgeError(
+      `Transcript ${id} not found`,
+      'TRANSCRIPT_NOT_FOUND',
+      404
+    );
+  }
+
+  return c.json({
+    message: 'Transcript deleted successfully',
+  });
+});
+
+// GET /mini-tools/teams-transcript/stats - Get statistics
+app.get('/mini-tools/teams-transcript/stats', (c) => {
+  const stats = transcriptProcessor.getStatistics();
+  return c.json(stats);
+});
+
+// ==================== MCP Orchestrator Agent ====================
+
+// POST /mcp/analyze - Analyze task and get MCP server recommendations
+app.post('/mcp/analyze', async (c) => {
+  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
+  const body = await c.req.json();
+  const { taskDescription, context } = body;
+
+  if (!taskDescription) {
+    throw new BridgeError(
+      'taskDescription is required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const analysis = mcpOrchestrator.analyzeTask(taskDescription, context);
+  return c.json({ analysis });
+});
+
+// POST /mcp/strategy - Create execution strategy for analyzed task
+app.post('/mcp/strategy', async (c) => {
+  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
+  const body = await c.req.json();
+  const { analysis } = body;
+
+  if (!analysis) {
+    throw new BridgeError(
+      'analysis is required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const strategy = mcpOrchestrator.createExecutionStrategy(analysis);
+  return c.json({ strategy });
+});
+
+// POST /mcp/record - Record execution result for learning
+app.post('/mcp/record', async (c) => {
+  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
+  const body = await c.req.json();
+  const { taskType, serversUsed, success, duration, userFeedback } = body;
+
+  if (!taskType || !serversUsed || success === undefined || !duration) {
+    throw new BridgeError(
+      'taskType, serversUsed, success, and duration are required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  mcpOrchestrator.recordExecution(taskType, serversUsed, success, duration, userFeedback);
+
+  return c.json({
+    message: 'Execution recorded successfully',
+  });
+});
+
+// GET /mcp/stats - Get orchestrator statistics
+app.get('/mcp/stats', async (c) => {
+  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
+  const stats = mcpOrchestrator.getStatistics();
+  return c.json(stats);
+});
+
+// GET /mcp/capabilities - Get server capabilities map
+app.get('/mcp/capabilities', async (c) => {
+  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
+
+  // Return public capability information
+  const capabilities = {
+    serena: [
+      'Symbol operations (find, rename, references)',
+      'Semantic code search',
+      'Project memory and onboarding',
+      'Multi-language support',
+      'Large codebase navigation',
+    ],
+    context7: [
+      'Official documentation lookup',
+      'Library and framework guides',
+      'API reference and examples',
+      'Best practices and patterns',
+      'Version-specific information',
+    ],
+    magic: [
+      'UI component generation from 21st.dev',
+      'React, Vue, Angular components',
+      'Design system integration',
+      'Accessible and responsive design',
+    ],
+    playwright: [
+      'Browser automation and E2E testing',
+      'Visual testing and screenshots',
+      'Form interaction and navigation',
+      'Accessibility testing (WCAG)',
+    ],
+    'sequential-thinking': [
+      'Complex multi-step reasoning',
+      'Hypothesis testing and verification',
+      'Structured problem decomposition',
+      'Debugging logic analysis',
+    ],
+    'logo-search': [
+      'Company logo lookup',
+      'Brand assets in SVG/TSX/JSX',
+      'Icon components generation',
+    ],
+  };
+
+  return c.json({ capabilities });
+});
+
 // ==================== Admin ====================
 
 app.post('/admin/cleanup', async (c) => {
@@ -920,6 +1326,169 @@ app.post('/admin/stats/reset', (c) => {
   return c.json({
     message: 'Statistics reset successfully',
   });
+});
+
+// ==================== External Data Integration ====================
+
+// POST /external/data/sessions/create - Create external data session
+app.post('/external/data/sessions/create', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+  const body = await c.req.json();
+  const { title, platform, metadata } = body;
+
+  if (!title || !platform) {
+    throw new BridgeError(
+      'title and platform are required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const session = externalDataAdapter.createExternalSession({
+    title,
+    platform,
+    metadata,
+  });
+
+  return c.json(
+    {
+      session,
+      message: 'External session created successfully',
+    },
+    201
+  );
+});
+
+// POST /external/data/upload - Upload data to existing session
+app.post('/external/data/upload', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+  const body = await c.req.json();
+  const { sessionId, platform, data, metadata } = body;
+
+  if (!sessionId || !platform || !data) {
+    throw new BridgeError(
+      'sessionId, platform, and data are required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  if (!Array.isArray(data)) {
+    throw new BridgeError(
+      'data must be an array',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const result = externalDataAdapter.uploadData(sessionId, {
+    platform,
+    data,
+    metadata,
+  });
+
+  return c.json(result);
+});
+
+// POST /external/data/sessions/create-and-upload - Create session and upload data
+app.post('/external/data/sessions/create-and-upload', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+  const body = await c.req.json();
+  const { title, platform, metadata, data } = body;
+
+  if (!title || !platform || !data) {
+    throw new BridgeError(
+      'title, platform, and data are required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  if (!Array.isArray(data)) {
+    throw new BridgeError(
+      'data must be an array',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const result = externalDataAdapter.createAndUpload(
+    { title, platform, metadata },
+    { platform, data, metadata }
+  );
+
+  return c.json(
+    {
+      session: result.session,
+      uploadResult: result.uploadResult,
+      message: 'Session created and data uploaded successfully',
+    },
+    201
+  );
+});
+
+// POST /external/data/sessions/:id/end - End a session
+app.post('/external/data/sessions/:id/end', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+  const sessionId = c.req.param('id');
+
+  const session = externalDataAdapter.endSession(sessionId);
+
+  return c.json({
+    session,
+    message: 'Session ended successfully',
+  });
+});
+
+// GET /external/data/sessions - List all external sessions
+app.get('/external/data/sessions', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+
+  const sessions = externalDataAdapter.getAllExternalSessions();
+
+  return c.json({
+    sessions,
+    count: sessions.length,
+  });
+});
+
+// GET /external/data/sessions/:id - Get session with data
+app.get('/external/data/sessions/:id', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+  const sessionId = c.req.param('id');
+
+  const result = externalDataAdapter.getSessionWithEvents(sessionId);
+
+  return c.json(result);
+});
+
+// GET /external/data/sessions/:id/stats - Get session statistics
+app.get('/external/data/sessions/:id/stats', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+  const sessionId = c.req.param('id');
+
+  const stats = externalDataAdapter.getSessionStats(sessionId);
+
+  return c.json(stats);
+});
+
+// POST /external/data/batch-upload - Batch upload to multiple sessions
+app.post('/external/data/batch-upload', async (c) => {
+  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
+  const body = await c.req.json();
+  const { uploads } = body;
+
+  if (!uploads || !Array.isArray(uploads)) {
+    throw new BridgeError(
+      'uploads array is required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const result = externalDataAdapter.batchUpload(uploads);
+
+  return c.json(result);
 });
 
 // ==================== Export ====================

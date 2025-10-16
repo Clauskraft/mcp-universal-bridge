@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MCP Universal AI Bridge - Dashboard</title>
+    <title>MCP Universal AI Bridge - One API for All AI Providers</title>
+    <meta name="description" content="Universal AI Bridge connecting Claude, ChatGPT, and Gemini through a single unified API with transparency and cost tracking.">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #1a1a1a; line-height: 1.6; }
 
-        /* TDC CVI Colors */
         :root {
             --tdc-blue: #0000FF;
             --tdc-dark-blue: #00008B;
@@ -24,269 +24,511 @@
         .header {
             background: linear-gradient(135deg, var(--tdc-blue) 0%, var(--tdc-dark-blue) 100%);
             color: white;
-            padding: 2rem;
+            padding: 1.5rem 2rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        .header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .header p { opacity: 0.9; font-size: 1.1rem; }
-
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            border-left: 4px solid var(--tdc-blue);
-        }
-
-        .stat-card h3 { color: var(--text-secondary); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem; }
-        .stat-card .value { font-size: 2.5rem; font-weight: 700; color: var(--text-primary); }
-        .stat-card .change { font-size: 0.875rem; margin-top: 0.5rem; }
-        .stat-card .change.up { color: var(--success); }
-        .stat-card .change.down { color: var(--error); }
-
-        .card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            margin-bottom: 1.5rem;
-        }
-
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-        .card-header h2 { font-size: 1.5rem; color: var(--text-primary); }
-
-        .badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .badge.success { background: #d1fae5; color: #065f46; }
-        .badge.warning { background: #fef3c7; color: #92400e; }
-        .badge.error { background: #fee2e2; color: #991b1b; }
-
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 1rem; border-bottom: 2px solid var(--border); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 0.75rem; }
-        td { padding: 1rem; border-bottom: 1px solid var(--border); }
-
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-primary { background: var(--tdc-blue); color: white; }
-        .btn-primary:hover { background: var(--tdc-dark-blue); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,255,0.3); }
-
-        .loading { display: inline-block; width: 20px; height: 20px; border: 3px solid var(--tdc-light-blue); border-top-color: var(--tdc-blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .provider-list { display: flex; gap: 1rem; flex-wrap: wrap; }
-        .provider-card {
-            flex: 1;
-            min-width: 200px;
-            padding: 1rem;
-            border: 2px solid var(--border);
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-        .provider-card:hover { border-color: var(--tdc-blue); transform: translateY(-2px); }
-        .provider-card.healthy { border-color: var(--success); background: #f0fdf4; }
-        .provider-card.unhealthy { border-color: var(--error); background: #fef2f2; }
+        .header h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .header p { opacity: 0.9; font-size: 0.9rem; }
 
         .nav {
             background: white;
             border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
+            padding: 0.75rem 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
 
         .nav a {
             text-decoration: none;
             color: var(--text-secondary);
             padding: 0.5rem 1rem;
-            margin-right: 1rem;
             border-radius: 6px;
             transition: all 0.2s;
+            font-size: 0.9rem;
         }
 
         .nav a:hover { background: #f0f0f0; color: var(--text-primary); }
         .nav a.active { background: var(--tdc-blue); color: white; }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--tdc-blue) 0%, var(--tdc-dark-blue) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.875rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--tdc-blue);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        /* Features Section */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .section-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            margin-bottom: 3rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .feature-description {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Providers Section */
+        .providers {
+            background: white;
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .provider-grid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .provider-badge {
+            padding: 1rem 2rem;
+            background: #f9fafb;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: all 0.2s;
+            min-width: 180px;
+        }
+
+        .provider-badge:hover {
+            border-color: var(--tdc-blue);
+            background: #f0f0ff;
+        }
+
+        /* Stats Section */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--tdc-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, var(--tdc-blue) 0%, var(--tdc-dark-blue) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.125rem;
+            opacity: 0.9;
+            margin-bottom: 2rem;
+        }
+
+        /* Footer */
+        .footer {
+            background: #1a1a1a;
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+        }
+
+        .footer-copyright {
+            opacity: 0.6;
+            font-size: 0.875rem;
+        }
+
+        /* Loading State */
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 1.75rem; }
+            .hero p { font-size: 1rem; }
+            .section-title { font-size: 1.5rem; }
+            .features { grid-template-columns: 1fr; }
+            .cta-buttons { flex-direction: column; align-items: stretch; }
+            .btn { justify-content: center; }
+            .provider-grid { gap: 1rem; }
+            .provider-badge { min-width: 150px; font-size: 1rem; padding: 0.75rem 1.5rem; }
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🌉 MCP Universal AI Bridge</h1>
-        <p>Professional Dashboard - TDC Erhverv Edition</p>
+        <p>One API for Claude, ChatGPT, and Gemini</p>
     </div>
 
-    <div class="nav">
-        <a href="/" class="active">📊 Dashboard</a>
+    <nav class="nav" role="navigation" aria-label="Main navigation">
+        <a href="/" class="active" aria-current="page">🏠 Home</a>
         <a href="/chat.html">💬 Chat</a>
+        <a href="/mini-tools.html">🛠️ Mini Tools</a>
         <a href="/settings.html">⚙️ Settings</a>
-    </div>
+        <a href="/docs.html">📚 Documentation</a>
+    </nav>
 
-    <div class="container">
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <h3>Total Requests</h3>
-                <div class="value" id="total-requests">-</div>
-                <div class="change up">↑ Live</div>
-            </div>
-            <div class="stat-card">
-                <h3>Active Sessions</h3>
-                <div class="value" id="active-sessions">-</div>
-                <div class="change" id="session-change">-</div>
-            </div>
-            <div class="stat-card">
-                <h3>Tokens Used</h3>
-                <div class="value" id="tokens-used">-</div>
-                <div class="change" id="tokens-change">-</div>
-            </div>
-            <div class="stat-card">
-                <h3>Total Cost</h3>
-                <div class="value" id="total-cost">$0.00</div>
-                <div class="change" id="cost-change">-</div>
-            </div>
+    <section class="hero" role="banner">
+        <h1>🚀 Universal AI Bridge</h1>
+        <p>Connect to Claude, ChatGPT, and Gemini through one unified API. Switch providers instantly, track costs transparently, and build AI-powered apps with ease.</p>
+        <div class="cta-buttons">
+            <a href="#demo" class="btn btn-primary" onclick="tryDemo(event)" role="button" aria-label="Try demo mode without API keys">
+                🎮 Try Demo
+            </a>
+            <a href="/onboarding.html" class="btn btn-secondary" role="button" aria-label="Get started with onboarding">
+                🚀 Get Started
+            </a>
+        </div>
+    </section>
+
+    <section class="container">
+        <h2 class="section-title">⚡ Key Features</h2>
+        <p class="section-subtitle">Everything you need to build powerful AI applications</p>
+
+        <div class="features">
+            <article class="feature-card">
+                <div class="feature-icon" role="img" aria-label="Universal provider support">🌐</div>
+                <h3 class="feature-title">Universal Provider Support</h3>
+                <p class="feature-description">Switch between Claude, ChatGPT, and Gemini seamlessly. One API, three powerful AI providers.</p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-icon" role="img" aria-label="Full transparency">🔍</div>
+                <h3 class="feature-title">Full Transparency</h3>
+                <p class="feature-description">Track token usage, costs, and performance for every request. No hidden fees, complete visibility.</p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-icon" role="img" aria-label="Built-in tools">🔧</div>
+                <h3 class="feature-title">Built-in Tools</h3>
+                <p class="feature-description">Web search, file access, code execution, and database queries - all integrated and ready to use.</p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-icon" role="img" aria-label="Cost tracking">💰</div>
+                <h3 class="feature-title">Cost Tracking</h3>
+                <p class="feature-description">Real-time cost monitoring per session, per provider, per model. Optimize your AI spending.</p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-icon" role="img" aria-label="Secure API keys">🔒</div>
+                <h3 class="feature-title">Secure API Keys</h3>
+                <p class="feature-description">AES-256-GCM encrypted storage for your API keys. Enterprise-grade security built-in.</p>
+            </article>
+
+            <article class="feature-card">
+                <div class="feature-icon" role="img" aria-label="Session management">📊</div>
+                <h3 class="feature-title">Session Management</h3>
+                <p class="feature-description">Organize conversations into sessions. Track history, compare providers, analyze performance.</p>
+            </article>
         </div>
 
-        <!-- Providers -->
-        <div class="card">
-            <div class="card-header">
-                <h2>AI Providers</h2>
-                <button class="btn btn-primary" onclick="refreshData()">🔄 Refresh</button>
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number">3</div>
+                <div class="stat-label">AI Providers</div>
             </div>
-            <div class="provider-list" id="providers">
-                <div class="loading"></div>
+            <div class="stat-card">
+                <div class="stat-number">10+</div>
+                <div class="stat-label">AI Models</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Transparency</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number">$0</div>
+                <div class="stat-label">Hidden Fees</div>
             </div>
         </div>
+    </section>
 
-        <!-- Provider Stats -->
-        <div class="card">
-            <div class="card-header">
-                <h2>Provider Statistics</h2>
+    <section class="providers">
+        <div class="container">
+            <h2 class="section-title">🤖 Supported AI Providers</h2>
+            <p class="section-subtitle">Connect to the best AI models from leading providers</p>
+            <div class="provider-grid" role="list">
+                <div class="provider-badge" role="listitem">🧠 Claude (Anthropic)</div>
+                <div class="provider-badge" role="listitem">💬 ChatGPT (OpenAI)</div>
+                <div class="provider-badge" role="listitem">✨ Gemini (Google)</div>
             </div>
-            <table id="provider-stats">
-                <thead>
-                    <tr>
-                        <th>Provider</th>
-                        <th>Requests</th>
-                        <th>Tokens</th>
-                        <th>Errors</th>
-                        <th>Avg Latency</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr><td colspan="6" style="text-align: center;"><div class="loading"></div></td></tr>
-                </tbody>
-            </table>
         </div>
-    </div>
+    </section>
+
+    <section class="cta-section">
+        <h2>Ready to Get Started?</h2>
+        <p>Set up your API keys in minutes and start building AI-powered applications</p>
+        <div class="cta-buttons">
+            <a href="#demo" class="btn btn-primary" onclick="tryDemo(event)" role="button">
+                🎮 Try Demo
+            </a>
+            <a href="/onboarding.html" class="btn btn-secondary" role="button">
+                🚀 Start Onboarding
+            </a>
+        </div>
+    </section>
+
+    <footer class="footer" role="contentinfo">
+        <div class="footer-links">
+            <a href="/docs.html">Documentation</a>
+            <a href="/chat.html">Chat Interface</a>
+            <a href="/settings.html">Settings</a>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+        </div>
+        <div class="footer-copyright">
+            © 2025 MCP Universal AI Bridge. Built with transparency and security in mind.
+        </div>
+    </footer>
 
     <script>
-        // Check if onboarding is complete
-        if (localStorage.getItem('onboarding_complete') !== 'true') {
-            window.location.href = '/onboarding.html';
+        // Smart redirect: returning users go to chat, new users stay on landing page
+        function checkUserStatus() {
+            const onboardingComplete = localStorage.getItem('onboarding_complete') === 'true';
+
+            if (onboardingComplete) {
+                // Show "Go to Chat" instead of "Get Started"
+                const getStartedButtons = document.querySelectorAll('a[href="/onboarding.html"]');
+                getStartedButtons.forEach(btn => {
+                    btn.textContent = '💬 Go to Chat';
+                    btn.href = '/chat.html';
+                    btn.setAttribute('aria-label', 'Go to chat interface');
+                });
+            }
         }
 
-        const API_BASE = 'http://localhost:3000';
-        let statsData = null;
-        let healthData = null;
+        // Try demo mode
+        async function tryDemo(event) {
+            event.preventDefault();
 
-        // Fetch data
-        async function fetchStats() {
+            const btn = event.target.closest('a');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loading"></div> Loading Demo...';
+            btn.style.pointerEvents = 'none';
+
             try {
-                const response = await fetch(`${API_BASE}/stats`);
-                statsData = await response.json();
-                updateStats();
+                // Check if demo mode is available
+                const response = await fetch('http://localhost:3000/health');
+
+                if (response.ok) {
+                    // Set demo flag and redirect to chat
+                    localStorage.setItem('demo_mode', 'true');
+                    localStorage.setItem('onboarding_complete', 'true'); // Allow access to chat
+                    window.location.href = '/chat.html?demo=true';
+                } else {
+                    alert('⚠️ Demo mode is not available yet. Please complete onboarding with your API keys.');
+                    btn.innerHTML = originalText;
+                    btn.style.pointerEvents = 'auto';
+                }
             } catch (error) {
-                console.error('Failed to fetch stats:', error);
+                alert('⚠️ Could not connect to server. Please ensure the backend is running on http://localhost:3000');
+                btn.innerHTML = originalText;
+                btn.style.pointerEvents = 'auto';
             }
         }
 
-        async function fetchHealth() {
-            try {
-                const response = await fetch(`${API_BASE}/health`);
-                healthData = await response.json();
-                updateProviders();
-            } catch (error) {
-                console.error('Failed to fetch health:', error);
+        // Initialize on page load
+        checkUserStatus();
+
+        // Add smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#demo') {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+
+        // Keyboard navigation support
+        document.addEventListener('keydown', (e) => {
+            // Alt + H for home
+            if (e.altKey && e.key === 'h') {
+                e.preventDefault();
+                window.location.href = '/';
             }
-        }
-
-        // Update UI
-        function updateStats() {
-            if (!statsData) return;
-
-            document.getElementById('total-requests').textContent = statsData.messagesSent || 0;
-            document.getElementById('active-sessions').textContent = statsData.activeSessions || 0;
-            document.getElementById('tokens-used').textContent = (statsData.tokensUsed || 0).toLocaleString();
-
-            // Calculate total cost
-            const totalCost = Object.values(statsData.providers).reduce((sum, p) => {
-                return sum + (p.tokens * 0.000005); // Rough estimate
-            }, 0);
-            document.getElementById('total-cost').textContent = `$${totalCost.toFixed(4)}`;
-
-            // Update provider table
-            const tbody = document.querySelector('#provider-stats tbody');
-            tbody.innerHTML = '';
-
-            for (const [name, data] of Object.entries(statsData.providers)) {
-                const row = tbody.insertRow();
-                row.innerHTML = `
-                    <td><strong>${name.toUpperCase()}</strong></td>
-                    <td>${data.requests}</td>
-                    <td>${data.tokens.toLocaleString()}</td>
-                    <td>${data.errors}</td>
-                    <td>${data.avgLatency}ms</td>
-                    <td><span class="badge ${data.errors > 0 ? 'error' : 'success'}">${data.errors > 0 ? 'Issues' : 'Healthy'}</span></td>
-                `;
+            // Alt + C for chat
+            if (e.altKey && e.key === 'c') {
+                e.preventDefault();
+                const onboardingComplete = localStorage.getItem('onboarding_complete') === 'true';
+                window.location.href = onboardingComplete ? '/chat.html' : '/onboarding.html';
             }
-        }
-
-        function updateProviders() {
-            if (!healthData) return;
-
-            const container = document.getElementById('providers');
-            container.innerHTML = '';
-
-            for (const [name, status] of Object.entries(healthData.providers)) {
-                const card = document.createElement('div');
-                card.className = `provider-card ${status.healthy ? 'healthy' : 'unhealthy'}`;
-                card.innerHTML = `
-                    <h3 style="margin-bottom: 0.5rem; text-transform: uppercase;">${name}</h3>
-                    <div style="font-size: 0.875rem; color: var(--text-secondary);">
-                        ${status.healthy ? '✅ Healthy' : '❌ Unhealthy'}<br>
-                        ${status.latency ? `Latency: ${status.latency}ms` : status.error || ''}
-                    </div>
-                `;
-                container.appendChild(card);
+            // Alt + S for settings
+            if (e.altKey && e.key === 's') {
+                e.preventDefault();
+                window.location.href = '/settings.html';
             }
-        }
+        });
 
-        async function refreshData() {
-            await Promise.all([fetchStats(), fetchHealth()]);
-        }
-
-        // Auto refresh every 5 seconds
-        refreshData();
-        setInterval(refreshData, 5000);
+        // Analytics (placeholder for future implementation)
+        console.log('🌉 MCP Universal AI Bridge - Landing Page Loaded');
+        console.log('📊 User Status:', localStorage.getItem('onboarding_complete') === 'true' ? 'Returning User' : 'New User');
     </script>
 </body>
 </html>

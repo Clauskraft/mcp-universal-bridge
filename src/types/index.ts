@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // ==================== Core Types ====================
 
-export type AIProvider = 'claude' | 'gemini' | 'chatgpt';
+export type AIProvider = 'claude' | 'gemini' | 'chatgpt' | 'ollama' | 'grok';
 export type DeviceType = 'web' | 'mobile' | 'desktop' | 'server';
 export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
 
@@ -56,7 +56,7 @@ export type Message = z.infer<typeof MessageSchema>;
 // ==================== Session Management ====================
 
 export const SessionConfigSchema = z.object({
-  provider: z.enum(['claude', 'gemini', 'chatgpt']),
+  provider: z.enum(['claude', 'gemini', 'chatgpt', 'ollama', 'grok']),
   model: z.string(),
   temperature: z.number().min(0).max(2).default(0.7),
   maxTokens: z.number().positive().optional(),

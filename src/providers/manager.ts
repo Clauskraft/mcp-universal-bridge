@@ -2,6 +2,8 @@ import { BaseAIProvider } from './base.js';
 import { ClaudeProvider } from './claude.js';
 import { GeminiProvider } from './gemini.js';
 import { ChatGPTProvider } from './chatgpt.js';
+import { OllamaProvider } from './ollama.js';
+import { GrokProvider } from './grok.js';
 import type { AIProvider, ProviderConfig, ProviderHealth } from '../types/index.js';
 import { BridgeError } from '../types/index.js';
 
@@ -49,6 +51,25 @@ export class ProviderManager {
         timeout: parseInt(process.env.API_TIMEOUT || '60000'),
       });
     }
+
+    // Ollama (Local AI)
+    // Always available, doesn't require API key
+    this.configs.set('ollama', {
+      apiKey: '', // Ollama doesn't need API key
+      model: process.env.OLLAMA_MODEL || 'llama3.3:latest',
+      baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+      timeout: parseInt(process.env.API_TIMEOUT || '60000'),
+    });
+
+    // xAI Grok
+    if (process.env.XAI_API_KEY) {
+      this.configs.set('grok', {
+        apiKey: process.env.XAI_API_KEY,
+        model: process.env.GROK_MODEL || 'grok-beta',
+        baseURL: process.env.XAI_BASE_URL || 'https://api.x.ai/v1',
+        timeout: parseInt(process.env.API_TIMEOUT || '60000'),
+      });
+    }
   }
 
   /**
@@ -87,6 +108,10 @@ export class ProviderManager {
         return new GeminiProvider(config);
       case 'chatgpt':
         return new ChatGPTProvider(config);
+      case 'ollama':
+        return new OllamaProvider(config);
+      case 'grok':
+        return new GrokProvider(config);
       default:
         throw new BridgeError(
           `Unknown provider: ${providerName}`,

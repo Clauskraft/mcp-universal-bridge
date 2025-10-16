@@ -16,6 +16,55 @@
             padding: 2rem;
         }
 
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .wizard-container {
+                max-width: 100%;
+            }
+
+            .wizard-header h1 {
+                font-size: 1.5rem;
+            }
+
+            .wizard-header p {
+                font-size: 0.95rem;
+            }
+
+            .wizard-content {
+                padding: 1.5rem;
+            }
+
+            .wizard-actions {
+                padding: 1.5rem;
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+
+            .step h2 {
+                font-size: 1.5rem;
+            }
+
+            .feature-grid {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .btn {
+                min-height: 48px;
+                min-width: 48px;
+            }
+
+            .step-indicator {
+                order: -1;
+                width: 100%;
+                text-align: center;
+            }
+        }
+
         :root {
             --tdc-blue: #0000FF;
             --tdc-dark-blue: #00008B;
@@ -120,9 +169,18 @@
         }
 
         .form-group input:focus {
-            outline: none;
+            outline: 2px solid var(--tdc-blue);
+            outline-offset: 2px;
             border-color: var(--tdc-blue);
             box-shadow: 0 0 0 3px rgba(0, 0, 255, 0.1);
+        }
+
+        /* Visible focus indicators for keyboard navigation */
+        a:focus,
+        button:focus,
+        input:focus {
+            outline: 2px solid var(--tdc-blue);
+            outline-offset: 2px;
         }
 
         .form-group .hint {
@@ -213,6 +271,8 @@
             cursor: pointer;
             transition: all 0.2s;
             border: none;
+            min-height: 48px;
+            min-width: 120px;
         }
 
         .btn-primary {
@@ -280,14 +340,14 @@
             <p>Let's get you set up in 3 simple steps</p>
         </div>
 
-        <div class="progress-bar">
+        <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Setup progress">
             <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
         </div>
 
         <div class="wizard-content">
             <!-- Step 1: Welcome -->
-            <div class="step active" data-step="1">
-                <h2>👋 Welcome!</h2>
+            <div class="step active" data-step="1" role="region" aria-labelledby="step-1-heading">
+                <h2 id="step-1-heading">👋 Welcome!</h2>
                 <p>
                     MCP Universal AI Bridge connects you to multiple AI providers through one simple API.
                     In the next steps, we'll help you set up your API keys and get started.
@@ -297,7 +357,7 @@
                     <div class="feature-card">
                         <div class="icon">🤖</div>
                         <h3>Multiple Providers</h3>
-                        <p>Claude, ChatGPT, Gemini</p>
+                        <p>Claude, ChatGPT, Gemini, Ollama</p>
                     </div>
                     <div class="feature-card">
                         <div class="icon">🔧</div>
@@ -323,51 +383,62 @@
             </div>
 
             <!-- Step 2: API Keys Setup -->
-            <div class="step" data-step="2">
-                <h2>🔑 API Keys Setup</h2>
+            <div class="step" data-step="2" role="region" aria-labelledby="step-2-heading">
+                <h2 id="step-2-heading">🔑 API Keys Setup</h2>
                 <p>Add your API keys to connect to AI providers. You can add more later in Settings.</p>
 
                 <div class="form-group">
-                    <label>
-                        🟣 Anthropic Claude API Key <span class="required">*</span>
+                    <label for="claude-key">
+                        🟣 Anthropic Claude API Key <span class="required" aria-label="required">*</span>
                     </label>
-                    <input type="password" id="claude-key" placeholder="sk-ant-api03-...">
-                    <div class="hint">
-                        Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a>
+                    <input type="password" id="claude-key" placeholder="sk-ant-api03-..." aria-describedby="claude-hint claude-status">
+                    <div class="hint" id="claude-hint">
+                        Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>
                     </div>
-                    <div id="claude-status"></div>
+                    <div id="claude-status" role="status" aria-live="polite"></div>
                 </div>
 
                 <div class="form-group">
-                    <label>
+                    <label for="chatgpt-key">
                         🟢 OpenAI ChatGPT API Key
                     </label>
-                    <input type="password" id="chatgpt-key" placeholder="sk-proj-...">
-                    <div class="hint">
-                        Get your key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>
+                    <input type="password" id="chatgpt-key" placeholder="sk-proj-..." aria-describedby="chatgpt-hint chatgpt-status">
+                    <div class="hint" id="chatgpt-hint">
+                        Get your key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a>
                     </div>
-                    <div id="chatgpt-status"></div>
+                    <div id="chatgpt-status" role="status" aria-live="polite"></div>
                 </div>
 
                 <div class="form-group">
-                    <label>
+                    <label for="gemini-key">
                         🔵 Google Gemini API Key
                     </label>
-                    <input type="password" id="gemini-key" placeholder="AIza...">
-                    <div class="hint">
-                        Get your key at <a href="https://makersuite.google.com/app/apikey" target="_blank">makersuite.google.com</a>
+                    <input type="password" id="gemini-key" placeholder="AIza..." aria-describedby="gemini-hint gemini-status">
+                    <div class="hint" id="gemini-hint">
+                        Get your key at <a href="https://makersuite.google.com/app/apikey" target="_blank" rel="noopener">makersuite.google.com</a>
                     </div>
-                    <div id="gemini-status"></div>
+                    <div id="gemini-status" role="status" aria-live="polite"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ollama-url">
+                        🦙 Ollama (Local AI) - Connection URL
+                    </label>
+                    <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434" aria-describedby="ollama-hint ollama-status">
+                    <div class="hint" id="ollama-hint">
+                        Local AI models via Ollama. <a href="https://ollama.com/download" target="_blank" rel="noopener">Download Ollama</a> to use local models (free!)
+                    </div>
+                    <div id="ollama-status" role="status" aria-live="polite"></div>
                 </div>
 
                 <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 8px; border-left: 4px solid var(--warning);">
-                    <strong>💡 Pro Tip:</strong> At least one API key is required. You can skip optional keys and add them later in Settings.
+                    <strong>💡 Pro Tip:</strong> At least one AI provider is required. Ollama is free and runs locally - perfect for testing!
                 </div>
             </div>
 
             <!-- Step 3: Test & Finish -->
-            <div class="step" data-step="3">
-                <h2>🚀 Ready to Go!</h2>
+            <div class="step" data-step="3" role="region" aria-labelledby="step-3-heading">
+                <h2 id="step-3-heading">🚀 Ready to Go!</h2>
                 <p>Your setup is complete! Here's what you can do now:</p>
 
                 <div class="feature-grid">
@@ -404,11 +475,11 @@
         </div>
 
         <div class="wizard-actions">
-            <button class="btn btn-secondary" id="btn-back" onclick="previousStep()" style="display: none;">
+            <button class="btn btn-secondary" id="btn-back" onclick="previousStep()" style="display: none;" aria-label="Go to previous step">
                 ← Back
             </button>
-            <div class="step-indicator" id="step-indicator">Step 1 of 3</div>
-            <button class="btn btn-primary" id="btn-next" onclick="nextStep()">
+            <div class="step-indicator" id="step-indicator" role="status" aria-live="polite">Step 1 of 3</div>
+            <button class="btn btn-primary" id="btn-next" onclick="nextStep()" aria-label="Go to next step">
                 Next →
             </button>
         </div>
@@ -420,32 +491,59 @@
 
         function updateProgress() {
             const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
-            document.getElementById('progress-fill').style.width = progress + '%';
+            const progressBar = document.querySelector('.progress-bar');
+            const progressFill = document.getElementById('progress-fill');
+
+            progressFill.style.width = progress + '%';
+            progressBar.setAttribute('aria-valuenow', progress.toString());
+
             document.getElementById('step-indicator').textContent = `Step ${currentStep} of ${totalSteps}`;
 
-            // Update button visibility
-            document.getElementById('btn-back').style.display = currentStep > 1 ? 'block' : 'none';
+            // Update button visibility and labels
+            const btnBack = document.getElementById('btn-back');
+            btnBack.style.display = currentStep > 1 ? 'block' : 'none';
 
-            // Update next button text
+            // Update next button text and aria-label
             const btnNext = document.getElementById('btn-next');
             if (currentStep === totalSteps) {
                 btnNext.textContent = '🚀 Start Using Bridge';
+                btnNext.setAttribute('aria-label', 'Start using MCP Bridge');
             } else {
                 btnNext.textContent = 'Next →';
+                btnNext.setAttribute('aria-label', `Go to step ${currentStep + 1}`);
             }
         }
 
-        function nextStep() {
+        async function nextStep() {
             // Validate current step
             if (currentStep === 2) {
                 const claudeKey = document.getElementById('claude-key').value;
-                if (!claudeKey) {
-                    alert('⚠️ At least Claude API key is required to proceed.');
+                const chatgptKey = document.getElementById('chatgpt-key').value;
+                const geminiKey = document.getElementById('gemini-key').value;
+                const ollamaUrl = document.getElementById('ollama-url').value;
+
+                if (!claudeKey && !chatgptKey && !geminiKey && !ollamaUrl) {
+                    alert('⚠️ At least one AI provider is required. Claude, ChatGPT, Gemini, or Ollama.');
                     return;
                 }
 
-                // Save API keys
-                saveAPIKeys();
+                // Show loading state
+                const btnNext = document.getElementById('btn-next');
+                const originalText = btnNext.textContent;
+                btnNext.disabled = true;
+                btnNext.innerHTML = '<span class="loading"></span> Saving...';
+
+                try {
+                    // Save API keys securely to backend
+                    await saveAPIKeys();
+                } catch (error) {
+                    btnNext.disabled = false;
+                    btnNext.textContent = originalText;
+                    return; // Don't proceed if save failed
+                }
+
+                btnNext.disabled = false;
+                btnNext.textContent = originalText;
             }
 
             if (currentStep === totalSteps) {
@@ -477,22 +575,85 @@
             updateProgress();
         }
 
-        function saveAPIKeys() {
+        async function saveAPIKeys() {
             const keys = {
-                claude: document.getElementById('claude-key').value,
-                chatgpt: document.getElementById('chatgpt-key').value,
-                gemini: document.getElementById('gemini-key').value
+                claude: { value: document.getElementById('claude-key').value, provider: 'anthropic', name: 'ANTHROPIC_API_KEY' },
+                chatgpt: { value: document.getElementById('chatgpt-key').value, provider: 'openai', name: 'OPENAI_API_KEY' },
+                gemini: { value: document.getElementById('gemini-key').value, provider: 'google', name: 'GOOGLE_API_KEY' },
+                ollama: { value: document.getElementById('ollama-url').value, provider: 'ollama', name: 'OLLAMA_BASE_URL' }
             };
 
-            // Save to localStorage
-            if (keys.claude) localStorage.setItem('ANTHROPIC_API_KEY', keys.claude);
-            if (keys.chatgpt) localStorage.setItem('OPENAI_API_KEY', keys.chatgpt);
-            if (keys.gemini) localStorage.setItem('GOOGLE_API_KEY', keys.gemini);
+            // Save to secure backend secrets manager (NOT localStorage for security!)
+            try {
+                const promises = [];
 
-            // Mark onboarding as complete
-            localStorage.setItem('onboarding_complete', 'true');
+                if (keys.claude.value) {
+                    promises.push(
+                        fetch('http://localhost:3000/secrets/set-and-validate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: keys.claude.name,
+                                value: keys.claude.value,
+                                provider: keys.claude.provider
+                            })
+                        })
+                    );
+                }
 
-            console.log('✅ API keys saved to localStorage');
+                if (keys.chatgpt.value) {
+                    promises.push(
+                        fetch('http://localhost:3000/secrets/set-and-validate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: keys.chatgpt.name,
+                                value: keys.chatgpt.value,
+                                provider: keys.chatgpt.provider
+                            })
+                        })
+                    );
+                }
+
+                if (keys.gemini.value) {
+                    promises.push(
+                        fetch('http://localhost:3000/secrets/set-and-validate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: keys.gemini.name,
+                                value: keys.gemini.value,
+                                provider: keys.gemini.provider
+                            })
+                        })
+                    );
+                }
+
+                if (keys.ollama.value) {
+                    promises.push(
+                        fetch('http://localhost:3000/secrets/set-and-validate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: keys.ollama.name,
+                                value: keys.ollama.value,
+                                provider: keys.ollama.provider
+                            })
+                        })
+                    );
+                }
+
+                await Promise.all(promises);
+
+                // Mark onboarding as complete (only this flag in localStorage, not keys!)
+                localStorage.setItem('onboarding_complete', 'true');
+
+                console.log('✅ API keys securely saved to encrypted backend storage');
+            } catch (error) {
+                console.error('❌ Failed to save API keys:', error);
+                alert('Failed to save API keys. Please try again.');
+                throw error;
+            }
         }
 
         function finishWizard() {
@@ -513,6 +674,10 @@
             if (this.value) await testAPIKey('gemini', this.value);
         });
 
+        document.getElementById('ollama-url')?.addEventListener('blur', async function() {
+            if (this.value) await testOllamaConnection(this.value);
+        });
+
         async function testAPIKey(provider, key) {
             const statusDiv = document.getElementById(`${provider}-status`);
             statusDiv.innerHTML = '<div class="status-indicator testing">⏳ Testing connection...</div>';
@@ -530,6 +695,29 @@
                 statusDiv.innerHTML = '<div class="status-indicator success">✅ Connection successful!</div>';
             } else {
                 statusDiv.innerHTML = '<div class="status-indicator error">❌ Invalid API key format</div>';
+            }
+        }
+
+        async function testOllamaConnection(url) {
+            const statusDiv = document.getElementById('ollama-status');
+            statusDiv.innerHTML = '<div class="status-indicator testing">⏳ Testing Ollama connection...</div>';
+
+            try {
+                // Test connection to Ollama
+                const response = await fetch(`${url}/api/tags`, {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(5000) // 5 second timeout
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const modelCount = data.models?.length || 0;
+                    statusDiv.innerHTML = `<div class="status-indicator success">✅ Ollama connected! (${modelCount} models found)</div>`;
+                } else {
+                    statusDiv.innerHTML = '<div class="status-indicator error">❌ Ollama not responding. Is it running?</div>';
+                }
+            } catch (error) {
+                statusDiv.innerHTML = '<div class="status-indicator error">❌ Cannot connect to Ollama. Please start Ollama first.</div>';
             }
         }
 
