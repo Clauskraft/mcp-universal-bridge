@@ -760,11 +760,12 @@
     </div>
 
     <nav class="nav" role="navigation" aria-label="Main navigation">
-        <a href="/" aria-label="Dashboard">📊 Dashboard</a>
-        <a href="/chat.html" class="active" aria-current="page" aria-label="Chat">💬 Chat</a>
-        <a href="/mini-tools.html" aria-label="Mini Tools">🛠️ Mini Tools</a>
-        <a href="/settings.html" aria-label="Settings">⚙️ Settings</a>
-        <a href="/docs.html" aria-label="Documentation">📚 Documentation</a>
+        <a href="/dashboard" aria-label="Dashboard">📊 Dashboard</a>
+        <a href="/dashboard/chat.html" class="active" aria-current="page" aria-label="Chat">💬 Chat</a>
+        <a href="/dashboard/settings.html" aria-label="Settings">⚙️ Settings</a>
+        <a href="/dashboard/onboarding.html" aria-label="Onboarding">🚀 Onboarding</a>
+        <a href="/dashboard/mini-tools.html" aria-label="Mini Tools">🛠️ Mini Tools</a>
+        <a href="/test-deployment" aria-label="Test">🧪 Test</a>
     </nav>
 
     <!-- Mobile sidebar overlay -->
@@ -896,7 +897,7 @@
     <script>
         // Check if onboarding is complete
         if (localStorage.getItem('onboarding_complete') !== 'true') {
-            window.location.href = '/onboarding.html';
+            window.location.href = '/dashboard/onboarding.html';
         }
 
         const API_BASE = 'http://localhost:3000';

@@ -35,15 +35,23 @@ app.use('*', cors({
   credentials: true,
 }));
 
-// Static file serving for frontend
-app.use('/dashboard/*', serveStatic({ root: './dashboard/public' }));
-app.use('/test/*', serveStatic({ root: './' }));
+// Static file serving for frontend assets
 app.use('/assets/*', serveStatic({ root: './dashboard/public/assets' }));
 app.use('/css/*', serveStatic({ root: './dashboard/public/css' }));
 app.use('/js/*', serveStatic({ root: './dashboard/public/js' }));
 
-// Serve main dashboard at /dashboard
+// Serve dashboard pages with specific routes
 app.get('/dashboard', serveStatic({ path: './dashboard/index.html' }));
+app.get('/dashboard/chat.html', serveStatic({ path: './dashboard/public/chat.html' }));
+app.get('/dashboard/settings.html', serveStatic({ path: './dashboard/public/settings.html' }));
+app.get('/dashboard/onboarding.html', serveStatic({ path: './dashboard/public/onboarding.html' }));
+app.get('/dashboard/mini-tools.html', serveStatic({ path: './dashboard/public/mini-tools.html' }));
+
+// Alternative routes without .html extension
+app.get('/dashboard/chat', serveStatic({ path: './dashboard/public/chat.html' }));
+app.get('/dashboard/settings', serveStatic({ path: './dashboard/public/settings.html' }));
+app.get('/dashboard/onboarding', serveStatic({ path: './dashboard/public/onboarding.html' }));
+app.get('/dashboard/mini-tools', serveStatic({ path: './dashboard/public/mini-tools.html' }));
 
 // Serve test files
 app.get('/test-deployment', serveStatic({ path: './test-deployment.html' }));
