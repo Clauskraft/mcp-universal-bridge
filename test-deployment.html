@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Bridge Deployment Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0a0a0a;
+            color: #e5e5e5;
+        }
+        h1 {
+            color: #60a5fa;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .endpoint-group {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .endpoint-group h2 {
+            color: #60a5fa;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .endpoint {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #262626;
+            border-radius: 4px;
+        }
+        .method {
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin-right: 10px;
+            width: 60px;
+            text-align: center;
+        }
+        .method.GET { background: #10b981; color: white; }
+        .method.POST { background: #3b82f6; color: white; }
+        .method.DELETE { background: #ef4444; color: white; }
+        .path {
+            flex: 1;
+            font-family: monospace;
+            color: #a3a3a3;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .status.success { background: #10b981; color: white; }
+        .status.error { background: #ef4444; color: white; }
+        .status.pending { background: #6b7280; color: white; }
+        #results {
+            margin-top: 20px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        pre {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌉 MCP Bridge Deployment Test</h1>
+    <p style="text-align: center; color: #a3a3a3;">Testing URL: <span id="baseUrl"></span></p>
+
+    <div class="endpoint-group">
+        <h2>🏥 Health Check</h2>
+        <div class="endpoint">
+            <span class="method GET">GET</span>
+            <span class="path">/</span>
+            <button onclick="testEndpoint('GET', '/')">Test</button>
+            <span id="status-/" class="status pending">Not tested</span>
+        </div>
+    </div>
+
+    <div class="endpoint-group">
+        <h2>🤖 MCP Orchestrator Endpoints</h2>
+        <div class="endpoint">
+            <span class="method POST">POST</span>
+            <span class="path">/api/mcp/analyze</span>
+            <button onclick="testMCPAnalyze()">Test</button>
+            <span id="status-mcp-analyze" class="status pending">Not tested</span>
+        </div>
+        <div class="endpoint">
+            <span class="method GET">GET</span>
+            <span class="path">/api/mcp/recommendations</span>
+            <button onclick="testEndpoint('GET', '/api/mcp/recommendations')">Test</button>
+            <span id="status-mcp-recommendations" class="status pending">Not tested</span>
+        </div>
+        <div class="endpoint">
+            <span class="method GET">GET</span>
+            <span class="path">/api/mcp/servers</span>
+            <button onclick="testEndpoint('GET', '/api/mcp/servers')">Test</button>
+            <span id="status-mcp-servers" class="status pending">Not tested</span>
+        </div>
+        <div class="endpoint">
+            <span class="method POST">POST</span>
+            <span class="path">/api/mcp/feedback</span>
+            <button onclick="testMCPFeedback()">Test</button>
+            <span id="status-mcp-feedback" class="status pending">Not tested</span>
+        </div>
+        <div class="endpoint">
+            <span class="method GET">GET</span>
+            <span class="path">/api/mcp/stats</span>
+            <button onclick="testEndpoint('GET', '/api/mcp/stats')">Test</button>
+            <span id="status-mcp-stats" class="status pending">Not tested</span>
+        </div>
+    </div>
+
+    <div class="endpoint-group">
+        <h2>📊 External Data Integration Endpoints</h2>
+        <div class="endpoint">
+            <span class="method POST">POST</span>
+            <span class="path">/api/external/session</span>
+            <button onclick="testCreateSession()">Test</button>
+            <span id="status-external-session" class="status pending">Not tested</span>
+        </div>
+        <div class="endpoint">
+            <span class="method POST">POST</span>
+            <span class="path">/api/external/session/:id/data</span>
+            <button onclick="testUploadData()">Test Upload</button>
+            <span id="status-external-data" class="status pending">Not tested</span>
+        </div>
+        <div class="endpoint">
+            <span class="method GET">GET</span>
+            <span class="path">/api/external/sessions</span>
+            <button onclick="testEndpoint('GET', '/api/external/sessions')">Test</button>
+            <span id="status-external-sessions" class="status pending">Not tested</span>
+        </div>
+    </div>
+
+    <div class="endpoint-group">
+        <h2>📁 Static Files</h2>
+        <div class="endpoint">
+            <span class="method GET">GET</span>
+            <span class="path">/test-integration</span>
+            <button onclick="testEndpoint('GET', '/test-integration')">Test</button>
+            <span id="status-test-integration" class="status pending">Not tested</span>
+        </div>
+        <div class="endpoint">
+            <span class="method GET">GET</span>
+            <span class="path">/QUICK_INTEGRATION.html</span>
+            <button onclick="testEndpoint('GET', '/QUICK_INTEGRATION.html')">Test</button>
+            <span id="status-quick-integration" class="status pending">Not tested</span>
+        </div>
+    </div>
+
+    <div id="results">
+        <h2>📝 Test Results</h2>
+        <pre id="output">Click on Test buttons to check endpoints...</pre>
+    </div>
+
+    <script>
+        const baseUrl = 'https://web-production-d9b2.up.railway.app';
+        document.getElementById('baseUrl').textContent = baseUrl;
+
+        let testSessionId = null;
+
+        async function testEndpoint(method, path, body = null) {
+            const output = document.getElementById('output');
+            const statusId = path.replace(/\//g, '-').replace(/^-/, '');
+            const statusEl = document.getElementById(`status-${statusId}`) ||
+                            document.getElementById(`status${path.replace(/\//g, '-')}`);
+
+            try {
+                output.textContent = `Testing ${method} ${path}...\n`;
+
+                const options = {
+                    method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(`${baseUrl}${path}`, options);
+                const text = await response.text();
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    data = text;
+                }
+
+                output.textContent = `${method} ${path}\nStatus: ${response.status} ${response.statusText}\n\nResponse:\n${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}`;
+
+                if (statusEl) {
+                    statusEl.className = response.ok ? 'status success' : 'status error';
+                    statusEl.textContent = response.status;
+                }
+
+                return { response, data };
+            } catch (error) {
+                output.textContent = `${method} ${path}\nError: ${error.message}`;
+                if (statusEl) {
+                    statusEl.className = 'status error';
+                    statusEl.textContent = 'Failed';
+                }
+                return { error };
+            }
+        }
+
+        async function testMCPAnalyze() {
+            const body = {
+                task: "Create a user authentication system with JWT tokens",
+                context: {
+                    projectType: "web",
+                    languages: ["typescript", "node.js"],
+                    frameworks: ["express"]
+                }
+            };
+
+            const result = await testEndpoint('POST', '/api/mcp/analyze', body);
+            if (result.response && result.response.ok) {
+                document.getElementById('status-mcp-analyze').className = 'status success';
+                document.getElementById('status-mcp-analyze').textContent = '200';
+            } else {
+                document.getElementById('status-mcp-analyze').className = 'status error';
+                document.getElementById('status-mcp-analyze').textContent = result.response ? result.response.status : 'Failed';
+            }
+        }
+
+        async function testMCPFeedback() {
+            const body = {
+                taskId: "test-task-123",
+                serverName: "context7",
+                success: true,
+                executionTime: 1500,
+                feedback: "Successfully retrieved React documentation"
+            };
+
+            const result = await testEndpoint('POST', '/api/mcp/feedback', body);
+            if (result.response && result.response.ok) {
+                document.getElementById('status-mcp-feedback').className = 'status success';
+                document.getElementById('status-mcp-feedback').textContent = '200';
+            } else {
+                document.getElementById('status-mcp-feedback').className = 'status error';
+                document.getElementById('status-mcp-feedback').textContent = result.response ? result.response.status : 'Failed';
+            }
+        }
+
+        async function testCreateSession() {
+            const body = {
+                applicationId: "test-app",
+                applicationName: "Test Application",
+                metadata: {
+                    version: "1.0.0",
+                    environment: "testing"
+                }
+            };
+
+            const result = await testEndpoint('POST', '/api/external/session', body);
+            if (result.response && result.response.ok && result.data) {
+                testSessionId = result.data.sessionId;
+                document.getElementById('status-external-session').className = 'status success';
+                document.getElementById('status-external-session').textContent = '200';
+                document.getElementById('output').textContent += `\n\n✅ Session created: ${testSessionId}`;
+            } else {
+                document.getElementById('status-external-session').className = 'status error';
+                document.getElementById('status-external-session').textContent = result.response ? result.response.status : 'Failed';
+            }
+        }
+
+        async function testUploadData() {
+            if (!testSessionId) {
+                alert('Please create a session first!');
+                return;
+            }
+
+            const body = {
+                timestamp: new Date().toISOString(),
+                eventType: "user_action",
+                data: {
+                    action: "button_click",
+                    element: "submit_button",
+                    value: "Test submission"
+                }
+            };
+
+            const result = await testEndpoint('POST', `/api/external/session/${testSessionId}/data`, body);
+            if (result.response && result.response.ok) {
+                document.getElementById('status-external-data').className = 'status success';
+                document.getElementById('status-external-data').textContent = '200';
+            } else {
+                document.getElementById('status-external-data').className = 'status error';
+                document.getElementById('status-external-data').textContent = result.response ? result.response.status : 'Failed';
+            }
+        }
+
+        // Test all endpoints button
+        async function testAll() {
+            await testEndpoint('GET', '/');
+            await testMCPAnalyze();
+            await testEndpoint('GET', '/api/mcp/recommendations');
+            await testEndpoint('GET', '/api/mcp/servers');
+            await testMCPFeedback();
+            await testEndpoint('GET', '/api/mcp/stats');
+            await testCreateSession();
+            if (testSessionId) {
+                await testUploadData();
+            }
+            await testEndpoint('GET', '/api/external/sessions');
+            await testEndpoint('GET', '/test-integration');
+            await testEndpoint('GET', '/QUICK_INTEGRATION.html');
+        }
+    </script>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <button onclick="testAll()" style="background: #10b981; padding: 10px 20px; font-size: 16px;">
+            🚀 Test All Endpoints
+        </button>
+    </div>
+</body>
+</html>
