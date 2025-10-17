@@ -1,0 +1,3 @@
+{
+  "query": "query { me { email projects { edges { node { name id services { edges { node { name id } } } } } } } }"
+}

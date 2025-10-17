@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Bridge Test Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #dee2e6;
+        }
+        .server-card {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #e0e0e0;
+        }
+        .score {
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <h1>🌉 MCP Bridge Test Integration</h1>
+
+    <div class="container">
+        <h2>📊 Connection Status</h2>
+        <button onclick="checkHealth()">Check Health</button>
+        <button onclick="getStats()">Get Stats</button>
+        <button onclick="getCapabilities()">Get Capabilities</button>
+        <div id="statusResult"></div>
+    </div>
+
+    <div class="container">
+        <h2>🤖 MCP Task Analyzer</h2>
+        <label for="taskInput">Describe your task:</label>
+        <textarea id="taskInput" rows="3" placeholder="Example: I need to rename a function across my entire TypeScript codebase">I need to find all references to a class and rename it across the codebase</textarea>
+
+        <label for="contextInput">Context (optional JSON):</label>
+        <textarea id="contextInput" rows="2" placeholder='{"language": "typescript", "files": 150}'>{"language": "typescript", "codebaseSize": "large"}</textarea>
+
+        <button onclick="analyzeTask()">Analyze Task</button>
+        <div id="analysisResult"></div>
+    </div>
+
+    <div class="container">
+        <h2>📈 MCP Learning System</h2>
+        <button onclick="getMCPStats()">Get MCP Statistics</button>
+        <div id="mcpStatsResult"></div>
+    </div>
+
+    <script>
+        // MCP Bridge Client
+        const BRIDGE_URL = 'https://web-production-d9b2.up.railway.app';
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${BRIDGE_URL}/health`);
+                const data = await response.json();
+
+                document.getElementById('statusResult').innerHTML = `
+                    <div class="status success">
+                        <strong>✅ Bridge is healthy!</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('statusResult').innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function getStats() {
+            try {
+                const response = await fetch(`${BRIDGE_URL}/stats`);
+                const data = await response.json();
+
+                document.getElementById('statusResult').innerHTML = `
+                    <div class="status success">
+                        <strong>📊 Statistics:</strong>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                document.getElementById('statusResult').innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function getCapabilities() {
+            try {
+                const response = await fetch(`${BRIDGE_URL}/mcp/capabilities`);
+                const data = await response.json();
+
+                let html = '<div class="status success"><strong>🎯 MCP Server Capabilities:</strong><br><br>';
+
+                for (const [server, capabilities] of Object.entries(data.capabilities)) {
+                    html += `<div class="server-card">
+                        <h3>📦 ${server}</h3>
+                        <ul>`;
+                    for (const cap of capabilities) {
+                        html += `<li>${cap}</li>`;
+                    }
+                    html += `</ul></div>`;
+                }
+                html += '</div>';
+
+                document.getElementById('statusResult').innerHTML = html;
+            } catch (error) {
+                document.getElementById('statusResult').innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function analyzeTask() {
+            const taskDescription = document.getElementById('taskInput').value;
+            const contextInput = document.getElementById('contextInput').value;
+
+            let context = {};
+            if (contextInput) {
+                try {
+                    context = JSON.parse(contextInput);
+                } catch (e) {
+                    alert('Invalid JSON in context field');
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch(`${BRIDGE_URL}/mcp/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ taskDescription, context })
+                });
+
+                const data = await response.json();
+
+                if (data.analysis) {
+                    let html = `
+                        <div class="result">
+                            <h3>🔍 Task Analysis Results</h3>
+                            <p><strong>Task Type:</strong> ${data.analysis.taskType}</p>
+                            <p><strong>Complexity:</strong> ${data.analysis.complexity}</p>
+                            <p><strong>Reasoning:</strong> ${data.analysis.reasoning}</p>
+                            <h4>📦 Recommended MCP Servers:</h4>
+                    `;
+
+                    for (const server of data.analysis.suggestedServers) {
+                        html += `
+                            <div class="server-card">
+                                <h4>${server.name}</h4>
+                                <p class="score">Match Score: ${(server.matchScore * 100).toFixed(0)}%</p>
+                                <p><strong>Reason:</strong> ${server.reasoning}</p>
+                                <p><strong>Capabilities:</strong> ${server.capabilities.join(', ')}</p>
+                            </div>
+                        `;
+                    }
+
+                    html += `
+                            <h4>🔧 Required Capabilities:</h4>
+                            <ul>
+                                ${data.analysis.requiredCapabilities.map(cap => `<li>${cap}</li>`).join('')}
+                            </ul>
+                            <h4>🚩 Proactive Flags:</h4>
+                            <ul>
+                                ${data.analysis.proactiveFlags.map(flag => `<li>${flag}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+
+                    document.getElementById('analysisResult').innerHTML = html;
+                } else {
+                    document.getElementById('analysisResult').innerHTML = `
+                        <div class="status error">
+                            <strong>❌ Error:</strong> ${JSON.stringify(data)}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('analysisResult').innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function getMCPStats() {
+            try {
+                const response = await fetch(`${BRIDGE_URL}/mcp/stats`);
+                const data = await response.json();
+
+                let html = `
+                    <div class="result">
+                        <h3>📊 MCP Orchestrator Statistics</h3>
+                        <p><strong>Total Executions:</strong> ${data.totalExecutions}</p>
+                        <p><strong>Overall Success Rate:</strong> ${(data.recentSuccessRate * 100).toFixed(0)}%</p>
+                        <h4>Server Performance:</h4>
+                `;
+
+                for (const [server, metrics] of Object.entries(data.serverMetrics)) {
+                    html += `
+                        <div class="server-card">
+                            <h4>${server}</h4>
+                            <p>Usage Count: ${metrics.usageCount}</p>
+                            <p>Success Rate: ${(metrics.successRate * 100).toFixed(0)}%</p>
+                            <p>Avg Duration: ${metrics.averageDuration}ms</p>
+                            <p>Last Used: ${metrics.lastUsed || 'Never'}</p>
+                        </div>
+                    `;
+                }
+
+                html += `
+                        <h4>🏆 Top Performing Servers:</h4>
+                        <ul>
+                            ${data.topPerformingServers.map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+
+                document.getElementById('mcpStatsResult').innerHTML = html;
+            } catch (error) {
+                document.getElementById('mcpStatsResult').innerHTML = `
+                    <div class="status error">
+                        <strong>❌ Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-check health on load
+        window.onload = () => {
+            checkHealth();
+        };
+    </script>
+</body>
+</html>

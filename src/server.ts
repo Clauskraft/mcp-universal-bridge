@@ -14,6 +14,8 @@ import { customModelsManager } from './utils/custom-models.js';
 import { transcriptProcessor } from './utils/transcript-processor.js';
 import { hybridAgent } from './tools/automation/agent.js';
 import { UITarsAutomation } from './tools/automation/uitars.js';
+import { mcpOrchestrator } from './agents/mcp-orchestrator.js';
+import { externalDataAdapter } from './utils/external-data-adapter.js';
 import {
   RegisterDeviceRequestSchema,
   CreateSessionRequestSchema,
@@ -26,9 +28,9 @@ const app = new Hono();
 
 // ==================== Middleware ====================
 
-// CORS - Restrict to frontend origin for security
+// CORS - Allow all origins in production for testing
 app.use('*', cors({
-  origin: 'http://localhost:8080',
+  origin: '*',  // Allow all origins for now
   credentials: true,
 }));
 
@@ -1201,7 +1203,6 @@ app.get('/mini-tools/teams-transcript/stats', (c) => {
 
 // POST /mcp/analyze - Analyze task and get MCP server recommendations
 app.post('/mcp/analyze', async (c) => {
-  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
   const body = await c.req.json();
   const { taskDescription, context } = body;
 
@@ -1219,7 +1220,6 @@ app.post('/mcp/analyze', async (c) => {
 
 // POST /mcp/strategy - Create execution strategy for analyzed task
 app.post('/mcp/strategy', async (c) => {
-  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
   const body = await c.req.json();
   const { analysis } = body;
 
@@ -1237,7 +1237,6 @@ app.post('/mcp/strategy', async (c) => {
 
 // POST /mcp/record - Record execution result for learning
 app.post('/mcp/record', async (c) => {
-  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
   const body = await c.req.json();
   const { taskType, serversUsed, success, duration, userFeedback } = body;
 
@@ -1258,15 +1257,12 @@ app.post('/mcp/record', async (c) => {
 
 // GET /mcp/stats - Get orchestrator statistics
 app.get('/mcp/stats', async (c) => {
-  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
   const stats = mcpOrchestrator.getStatistics();
   return c.json(stats);
 });
 
 // GET /mcp/capabilities - Get server capabilities map
 app.get('/mcp/capabilities', async (c) => {
-  const { mcpOrchestrator } = await import('./agents/mcp-orchestrator.js');
-
   // Return public capability information
   const capabilities = {
     serena: [
@@ -1332,7 +1328,6 @@ app.post('/admin/stats/reset', (c) => {
 
 // POST /external/data/sessions/create - Create external data session
 app.post('/external/data/sessions/create', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
   const body = await c.req.json();
   const { title, platform, metadata } = body;
 
@@ -1361,7 +1356,6 @@ app.post('/external/data/sessions/create', async (c) => {
 
 // POST /external/data/upload - Upload data to existing session
 app.post('/external/data/upload', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
   const body = await c.req.json();
   const { sessionId, platform, data, metadata } = body;
 
@@ -1392,7 +1386,6 @@ app.post('/external/data/upload', async (c) => {
 
 // POST /external/data/sessions/create-and-upload - Create session and upload data
 app.post('/external/data/sessions/create-and-upload', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
   const body = await c.req.json();
   const { title, platform, metadata, data } = body;
 
@@ -1429,7 +1422,6 @@ app.post('/external/data/sessions/create-and-upload', async (c) => {
 
 // POST /external/data/sessions/:id/end - End a session
 app.post('/external/data/sessions/:id/end', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
   const sessionId = c.req.param('id');
 
   const session = externalDataAdapter.endSession(sessionId);
@@ -1442,7 +1434,6 @@ app.post('/external/data/sessions/:id/end', async (c) => {
 
 // GET /external/data/sessions - List all external sessions
 app.get('/external/data/sessions', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
 
   const sessions = externalDataAdapter.getAllExternalSessions();
 
@@ -1454,7 +1445,6 @@ app.get('/external/data/sessions', async (c) => {
 
 // GET /external/data/sessions/:id - Get session with data
 app.get('/external/data/sessions/:id', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
   const sessionId = c.req.param('id');
 
   const result = externalDataAdapter.getSessionWithEvents(sessionId);
@@ -1464,7 +1454,6 @@ app.get('/external/data/sessions/:id', async (c) => {
 
 // GET /external/data/sessions/:id/stats - Get session statistics
 app.get('/external/data/sessions/:id/stats', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
   const sessionId = c.req.param('id');
 
   const stats = externalDataAdapter.getSessionStats(sessionId);
@@ -1474,7 +1463,6 @@ app.get('/external/data/sessions/:id/stats', async (c) => {
 
 // POST /external/data/batch-upload - Batch upload to multiple sessions
 app.post('/external/data/batch-upload', async (c) => {
-  const { externalDataAdapter } = await import('./utils/external-data-adapter.js');
   const body = await c.req.json();
   const { uploads } = body;
 
