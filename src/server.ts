@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { rateLimiter } from 'hono-rate-limiter';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { sanitizeRequestBody, getSanitizedBody, sanitizeString, sanitizeSQLInput } from './middleware/sanitization.js';
 import { sessionManager } from './utils/session.js';
 import { providerManager } from './providers/manager.js';
@@ -33,6 +34,21 @@ app.use('*', cors({
   origin: '*',  // Allow all origins for now
   credentials: true,
 }));
+
+// Static file serving for frontend
+app.use('/dashboard/*', serveStatic({ root: './dashboard/public' }));
+app.use('/test/*', serveStatic({ root: './' }));
+app.use('/assets/*', serveStatic({ root: './dashboard/public/assets' }));
+app.use('/css/*', serveStatic({ root: './dashboard/public/css' }));
+app.use('/js/*', serveStatic({ root: './dashboard/public/js' }));
+
+// Serve main dashboard at /dashboard
+app.get('/dashboard', serveStatic({ path: './dashboard/index.html' }));
+
+// Serve test files
+app.get('/test-deployment', serveStatic({ path: './test-deployment.html' }));
+app.get('/test-integration', serveStatic({ path: './QUICK_INTEGRATION.html' }));
+app.get('/local-test', serveStatic({ path: './LOCAL_TEST.html' }));
 
 // Rate limiting - Prevent DoS attacks (100 requests per minute per IP)
 app.use('*', rateLimiter({
@@ -79,7 +95,19 @@ app.get('/', (c) => {
     version: '1.0.0',
     description: '🌉 Connecting devices to Claude, Gemini, ChatGPT and more',
     providers: providerManager.getAvailableProviders(),
-    endpoints: {
+    frontend: {
+      dashboard: 'GET /dashboard - Main dashboard interface',
+      chat: 'GET /dashboard/chat.html - AI Chat interface',
+      settings: 'GET /dashboard/settings.html - Configuration settings',
+      onboarding: 'GET /dashboard/onboarding.html - Setup wizard',
+      miniTools: 'GET /dashboard/mini-tools.html - Utility tools',
+      test: {
+        deployment: 'GET /test-deployment - Production test suite',
+        integration: 'GET /test-integration - Integration test page',
+        local: 'GET /local-test - Local development test',
+      }
+    },
+    api: {
       health: 'GET /health',
       stats: 'GET /stats',
       devices: 'POST /devices/register, GET /devices, GET /devices/:id, DELETE /devices/:id',
@@ -90,8 +118,10 @@ app.get('/', (c) => {
       customModels: 'POST /models/custom, GET /models/custom, GET /models/custom/:id, PUT /models/custom/:id, DELETE /models/custom/:id, GET /models/custom/stats',
       secrets: 'POST /secrets/set, POST /secrets/validate, POST /secrets/set-and-validate, GET /secrets/list, DELETE /secrets/:name, GET /secrets/stats, GET /secrets/tools',
       miniTools: 'POST /mini-tools/teams-transcript, GET /mini-tools/teams-transcript, GET /mini-tools/teams-transcript/:id, DELETE /mini-tools/teams-transcript/:id, GET /mini-tools/teams-transcript/stats',
+      mcpOrchestrator: 'POST /api/mcp/analyze, POST /api/mcp/strategy, POST /api/mcp/record, GET /api/mcp/stats, GET /api/mcp/capabilities',
+      externalData: 'POST /api/external/data/sessions/create, POST /api/external/data/upload, POST /api/external/data/sessions/create-and-upload, POST /api/external/data/sessions/:id/end, GET /api/external/data/sessions, GET /api/external/data/sessions/:id, GET /api/external/data/sessions/:id/stats, POST /api/external/data/batch-upload',
     },
-    documentation: 'https://github.com/yourusername/mcp-universal-bridge',
+    documentation: 'https://github.com/Clauskraft/mcp-universal-bridge',
   });
 });
 
