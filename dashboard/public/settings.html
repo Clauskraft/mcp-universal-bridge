@@ -237,9 +237,12 @@
     </div>
 
     <div class="nav">
-        <a href="/">📊 Dashboard</a>
-        <a href="/chat.html">💬 Chat</a>
-        <a href="/settings.html" class="active">⚙️ Settings</a>
+        <a href="/dashboard">📊 Dashboard</a>
+        <a href="/dashboard/chat.html">💬 Chat</a>
+        <a href="/dashboard/settings.html" class="active">⚙️ Settings</a>
+        <a href="/dashboard/onboarding.html">🚀 Onboarding</a>
+        <a href="/dashboard/mini-tools.html">🛠️ Mini Tools</a>
+        <a href="/test-deployment">🧪 Test</a>
     </div>
 
     <div class="container">
@@ -389,7 +392,7 @@
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:3000';
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin;
 
         function showAlert(message, type = 'success') {
             const container = document.getElementById('alert-container');

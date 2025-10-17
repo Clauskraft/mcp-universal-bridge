@@ -336,8 +336,12 @@
             <h1>🛠️ Mini Tools</h1>
             <p class="subtitle">Utilities and helper tools for productivity</p>
             <div class="nav-links">
-                <a href="chat.html">← Back to Chat</a>
-                <a href="index.html">Dashboard</a>
+                <a href="/dashboard">📊 Dashboard</a>
+                <a href="/dashboard/chat.html">💬 Chat</a>
+                <a href="/dashboard/settings.html">⚙️ Settings</a>
+                <a href="/dashboard/onboarding.html">🚀 Onboarding</a>
+                <a href="/dashboard/mini-tools.html">🛠️ Mini Tools</a>
+                <a href="/test-deployment">🧪 Test</a>
             </div>
         </header>
 
@@ -425,7 +429,7 @@ or
     </div>
 
     <script>
-        const API_BASE = 'http://localhost:3000';
+        const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:3000' : window.location.origin;
         let currentTab = 'upload';
 
         function switchTab(tab) {
