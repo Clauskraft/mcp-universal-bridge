@@ -19,8 +19,11 @@ if (process.env.GOOGLE_API_KEY) providers.push('✅ Google Gemini');
 if (process.env.OPENAI_API_KEY) providers.push('✅ OpenAI ChatGPT');
 if (process.env.XAI_API_KEY) providers.push('✅ Grok (xAI)');
 
-// Ollama is always available (local, no API key required)
-providers.push('✅ Ollama (Local AI)');
+// Ollama variants (local and cloud)
+providers.push('✅ Ollama-Local (PC)');
+if (process.env.OLLAMA_CLOUD_URL) {
+  providers.push('✅ Ollama-Cloud (Server)');
+}
 
 if (providers.length === 1 && providers[0].includes('Ollama')) {
   console.log('⚠️  Only Ollama configured! Add cloud provider API keys for more options:');
@@ -28,6 +31,7 @@ if (providers.length === 1 && providers[0].includes('Ollama')) {
   console.log('  - GOOGLE_API_KEY (Gemini)');
   console.log('  - OPENAI_API_KEY (ChatGPT)');
   console.log('  - XAI_API_KEY (Grok)');
+  console.log('  - OLLAMA_CLOUD_URL (Ollama Cloud Server)');
 }
 
 providers.forEach((p) => console.log(`  ${p}`));

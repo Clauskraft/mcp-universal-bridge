@@ -439,18 +439,29 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="ollama-url">
-                        🦙 Ollama (Local AI) - Connection URL
+                    <label for="ollama-local-url">
+                        🦙 Ollama-Local (PC) - Connection URL
                     </label>
-                    <input type="text" id="ollama-url" placeholder="http://localhost:11434" value="http://localhost:11434" aria-describedby="ollama-hint ollama-status">
-                    <div class="hint" id="ollama-hint">
-                        Local AI models via Ollama. <a href="https://ollama.com/download" target="_blank" rel="noopener">Download Ollama</a> to use local models (free!)
+                    <input type="text" id="ollama-local-url" placeholder="http://localhost:11434" value="http://localhost:11434" aria-describedby="ollama-local-hint ollama-local-status">
+                    <div class="hint" id="ollama-local-hint">
+                        Local AI models on your PC. <a href="https://ollama.com/download" target="_blank" rel="noopener">Download Ollama</a> to use local models (free!)
                     </div>
-                    <div id="ollama-status" role="status" aria-live="polite"></div>
+                    <div id="ollama-local-status" role="status" aria-live="polite"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ollama-cloud-url">
+                        ☁️ Ollama-Cloud (Server) - Connection URL
+                    </label>
+                    <input type="text" id="ollama-cloud-url" placeholder="https://your-ollama-server.com:11434" aria-describedby="ollama-cloud-hint ollama-cloud-status">
+                    <div class="hint" id="ollama-cloud-hint">
+                        Remote Ollama server (VPS, Replicate, Modal). Leave empty if not using cloud Ollama.
+                    </div>
+                    <div id="ollama-cloud-status" role="status" aria-live="polite"></div>
                 </div>
 
                 <div style="margin-top: 1.5rem; padding: 1rem; background: #fef3c7; border-radius: 8px; border-left: 4px solid var(--warning);">
-                    <strong>💡 Pro Tip:</strong> At least one AI provider is required. Ollama is free and runs locally - perfect for testing!
+                    <strong>💡 Pro Tip:</strong> At least one AI provider is required. Ollama-Local is free and runs on your PC - perfect for testing!
                 </div>
             </div>
 
@@ -539,10 +550,11 @@
                 const claudeKey = document.getElementById('claude-key').value;
                 const chatgptKey = document.getElementById('chatgpt-key').value;
                 const geminiKey = document.getElementById('gemini-key').value;
-                const ollamaUrl = document.getElementById('ollama-url').value;
+                const ollamaLocalUrl = document.getElementById('ollama-local-url').value;
+                const ollamaCloudUrl = document.getElementById('ollama-cloud-url').value;
 
-                if (!claudeKey && !chatgptKey && !geminiKey && !ollamaUrl) {
-                    alert('⚠️ At least one AI provider is required. Claude, ChatGPT, Gemini, or Ollama.');
+                if (!claudeKey && !chatgptKey && !geminiKey && !ollamaLocalUrl && !ollamaCloudUrl) {
+                    alert('⚠️ At least one AI provider is required. Claude, ChatGPT, Gemini, Ollama-Local, or Ollama-Cloud.');
                     return;
                 }
 
@@ -599,7 +611,8 @@
                 claude: { value: document.getElementById('claude-key').value, provider: 'anthropic', name: 'ANTHROPIC_API_KEY' },
                 chatgpt: { value: document.getElementById('chatgpt-key').value, provider: 'openai', name: 'OPENAI_API_KEY' },
                 gemini: { value: document.getElementById('gemini-key').value, provider: 'google', name: 'GOOGLE_API_KEY' },
-                ollama: { value: document.getElementById('ollama-url').value, provider: 'ollama', name: 'OLLAMA_BASE_URL' }
+                ollamaLocal: { value: document.getElementById('ollama-local-url').value, provider: 'ollama-local', name: 'OLLAMA_LOCAL_URL' },
+                ollamaCloud: { value: document.getElementById('ollama-cloud-url').value, provider: 'ollama-cloud', name: 'OLLAMA_CLOUD_URL' }
             };
 
             // Save to secure backend secrets manager (NOT localStorage for security!)
@@ -648,15 +661,29 @@
                     );
                 }
 
-                if (keys.ollama.value) {
+                if (keys.ollamaLocal.value) {
                     promises.push(
                         fetch(`${API_BASE}/secrets/set-and-validate`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                                name: keys.ollama.name,
-                                value: keys.ollama.value,
-                                provider: keys.ollama.provider
+                                name: keys.ollamaLocal.name,
+                                value: keys.ollamaLocal.value,
+                                provider: keys.ollamaLocal.provider
+                            })
+                        })
+                    );
+                }
+
+                if (keys.ollamaCloud.value) {
+                    promises.push(
+                        fetch(`${API_BASE}/secrets/set-and-validate`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                name: keys.ollamaCloud.name,
+                                value: keys.ollamaCloud.value,
+                                provider: keys.ollamaCloud.provider
                             })
                         })
                     );
@@ -693,8 +720,12 @@
             if (this.value) await testAPIKey('gemini', this.value);
         });
 
-        document.getElementById('ollama-url')?.addEventListener('blur', async function() {
-            if (this.value) await testOllamaConnection(this.value);
+        document.getElementById('ollama-local-url')?.addEventListener('blur', async function() {
+            if (this.value) await testOllamaConnection(this.value, 'ollama-local');
+        });
+
+        document.getElementById('ollama-cloud-url')?.addEventListener('blur', async function() {
+            if (this.value) await testOllamaConnection(this.value, 'ollama-cloud');
         });
 
         async function testAPIKey(provider, key) {
@@ -717,9 +748,10 @@
             }
         }
 
-        async function testOllamaConnection(url) {
-            const statusDiv = document.getElementById('ollama-status');
-            statusDiv.innerHTML = '<div class="status-indicator testing">⏳ Testing Ollama connection...</div>';
+        async function testOllamaConnection(url, variant) {
+            const statusDiv = document.getElementById(`${variant}-status`);
+            const displayName = variant === 'ollama-local' ? 'Ollama-Local' : 'Ollama-Cloud';
+            statusDiv.innerHTML = `<div class="status-indicator testing">⏳ Testing ${displayName} connection...</div>`;
 
             try {
                 // Test connection to Ollama
@@ -731,12 +763,13 @@
                 if (response.ok) {
                     const data = await response.json();
                     const modelCount = data.models?.length || 0;
-                    statusDiv.innerHTML = `<div class="status-indicator success">✅ Ollama connected! (${modelCount} models found)</div>`;
+                    statusDiv.innerHTML = `<div class="status-indicator success">✅ ${displayName} connected! (${modelCount} models found)</div>`;
                 } else {
-                    statusDiv.innerHTML = '<div class="status-indicator error">❌ Ollama not responding. Is it running?</div>';
+                    statusDiv.innerHTML = `<div class="status-indicator error">❌ ${displayName} not responding. Is it running?</div>`;
                 }
             } catch (error) {
-                statusDiv.innerHTML = '<div class="status-indicator error">❌ Cannot connect to Ollama. Please start Ollama first.</div>';
+                const hint = variant === 'ollama-local' ? 'Please start Ollama on your PC first.' : 'Check if cloud server URL is correct.';
+                statusDiv.innerHTML = `<div class="status-indicator error">❌ Cannot connect to ${displayName}. ${hint}</div>`;
             }
         }
 

@@ -52,14 +52,25 @@ export class ProviderManager {
       });
     }
 
-    // Ollama (Local AI)
+    // Ollama-Local (PC/Localhost)
     // Always available, doesn't require API key
-    this.configs.set('ollama', {
+    this.configs.set('ollama-local', {
       apiKey: '', // Ollama doesn't need API key
-      model: process.env.OLLAMA_MODEL || 'llama3.3:latest',
-      baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+      model: process.env.OLLAMA_LOCAL_MODEL || 'llama3.3:latest',
+      baseURL: process.env.OLLAMA_LOCAL_URL || 'http://localhost:11434',
       timeout: parseInt(process.env.API_TIMEOUT || '60000'),
     });
+
+    // Ollama-Cloud (External Server/Replicate/Modal)
+    // Available if cloud URL is configured
+    if (process.env.OLLAMA_CLOUD_URL) {
+      this.configs.set('ollama-cloud', {
+        apiKey: process.env.OLLAMA_CLOUD_API_KEY || '', // Some cloud providers need API key
+        model: process.env.OLLAMA_CLOUD_MODEL || 'llama3.3:latest',
+        baseURL: process.env.OLLAMA_CLOUD_URL,
+        timeout: parseInt(process.env.API_TIMEOUT || '60000'),
+      });
+    }
 
     // xAI Grok
     if (process.env.XAI_API_KEY) {
@@ -108,7 +119,8 @@ export class ProviderManager {
         return new GeminiProvider(config);
       case 'chatgpt':
         return new ChatGPTProvider(config);
-      case 'ollama':
+      case 'ollama-local':
+      case 'ollama-cloud':
         return new OllamaProvider(config);
       case 'grok':
         return new GrokProvider(config);
