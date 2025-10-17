@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "echo 'Build skipped - using tsx runtime'",
-    "start": "tsx src/server.ts",
+    "start": "tsx src/index.ts",
     "start:prod": "node dist/index.js",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
