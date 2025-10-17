@@ -13,7 +13,7 @@ import { BridgeError } from '../types/index.js';
 /**
  * Task Analysis Result
  */
-interface TaskAnalysis {
+export interface TaskAnalysis {
   taskType: TaskType;
   complexity: number; // 0-1
   requiredCapabilities: string[];
@@ -25,11 +25,11 @@ interface TaskAnalysis {
 /**
  * MCP Server Recommendation
  */
-interface MCPServerRecommendation {
-  server: MCPServer;
-  confidence: number; // 0-1
+export interface MCPServerRecommendation {
+  name: string;  // Changed from server to name for compatibility
+  matchScore: number; // 0-1
   reasoning: string;
-  priority: number; // 1 = primary, 2 = secondary, 3 = optional
+  capabilities: string[];
 }
 
 /**
@@ -353,31 +353,26 @@ export class MCPOrchestratorAgent {
         const adjustedConfidence = confidence * (performance?.successRate || 1.0);
 
         recommendations.push({
-          server,
-          confidence: adjustedConfidence,
+          name: server,
+          matchScore: adjustedConfidence,
           reasoning: this.generateServerReasoning(server, capabilities, requiredCapabilities),
-          priority: this.determinePriority(adjustedConfidence, taskType, server),
+          capabilities: capabilities.filter(cap => requiredCapabilities.includes(cap)),
         });
       }
     });
 
     // Add sequential-thinking for complex tasks
-    if (complexity > 0.7 && !recommendations.find(r => r.server === 'sequential-thinking')) {
+    if (complexity > 0.7 && !recommendations.find(r => r.name === 'sequential-thinking')) {
       recommendations.push({
-        server: 'sequential-thinking',
-        confidence: complexity,
+        name: 'sequential-thinking',
+        matchScore: complexity,
         reasoning: 'High complexity task benefits from structured reasoning',
-        priority: 1,
+        capabilities: ['complex_reasoning', 'structured_thinking'],
       });
     }
 
-    // Sort by priority and confidence
-    recommendations.sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return a.priority - b.priority;
-      }
-      return b.confidence - a.confidence;
-    });
+    // Sort by match score
+    recommendations.sort((a, b) => b.matchScore - a.matchScore);
 
     return recommendations;
   }
@@ -419,17 +414,17 @@ export class MCPOrchestratorAgent {
    * Generate overall reasoning
    */
   private generateReasoning(taskType: TaskType, servers: MCPServerRecommendation[]): string {
-    const primary = servers.find(s => s.priority === 1);
-    const secondary = servers.filter(s => s.priority === 2);
+    const primary = servers[0];  // First one has highest match score
+    const secondary = servers.slice(1, 3);  // Next two
 
     let reasoning = `Task type: ${taskType}. `;
 
     if (primary) {
-      reasoning += `Primary recommendation: ${primary.server} (${(primary.confidence * 100).toFixed(0)}% confidence). `;
+      reasoning += `Primary recommendation: ${primary.name} (${(primary.matchScore * 100).toFixed(0)}% match). `;
     }
 
     if (secondary.length > 0) {
-      reasoning += `Secondary options: ${secondary.map(s => s.server).join(', ')}. `;
+      reasoning += `Alternative options: ${secondary.map(s => s.name).join(', ')}. `;
     }
 
     return reasoning;
@@ -479,8 +474,8 @@ export class MCPOrchestratorAgent {
    * Create execution strategy
    */
   createExecutionStrategy(analysis: TaskAnalysis): ExecutionStrategy {
-    const primary = analysis.suggestedServers.find(s => s.priority === 1);
-    const secondary = analysis.suggestedServers.filter(s => s.priority === 2 || s.priority === 3);
+    const primary = analysis.suggestedServers[0];  // First has highest score
+    const secondary = analysis.suggestedServers.slice(1);  // Rest are secondary
 
     if (!primary) {
       throw new BridgeError(
@@ -501,10 +496,10 @@ export class MCPOrchestratorAgent {
 
     // Build strategy
     const strategy: ExecutionStrategy = {
-      primaryServer: primary.server,
-      secondaryServers: secondary.map(s => s.server),
+      primaryServer: primary.name as MCPServer,
+      secondaryServers: secondary.map(s => s.name as MCPServer),
       executionOrder,
-      fallbackStrategy: this.createFallbackStrategy(primary.server),
+      fallbackStrategy: this.createFallbackStrategy(primary.name as MCPServer),
       optimizations: this.suggestOptimizations(analysis),
     };
 
