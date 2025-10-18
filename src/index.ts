@@ -47,12 +47,19 @@ const server = createServer(async (req, res) => {
   }
 
   // Handle regular HTTP requests with Hono
+  const requestOptions: any = {
+    method: req.method || 'GET',
+    headers: req.headers as any,
+  };
+
+  // Add body and duplex for POST/PUT/PATCH requests
+  if (req.method && req.method !== 'GET' && req.method !== 'HEAD') {
+    requestOptions.body = req;
+    requestOptions.duplex = 'half'; // Required for Node.js 18+
+  }
+
   const response = await app.fetch(
-    new Request(`http://localhost:${port}${req.url}`, {
-      method: req.method || 'GET',
-      headers: req.headers as any,
-      body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined,
-    })
+    new Request(`http://localhost:${port}${req.url}`, requestOptions)
   );
 
   // Send response
