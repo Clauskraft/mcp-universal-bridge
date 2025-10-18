@@ -16,6 +16,7 @@ import { transcriptProcessor } from './utils/transcript-processor.js';
 import { hybridAgent } from './tools/automation/agent.js';
 import { UITarsAutomation } from './tools/automation/uitars.js';
 import { mcpOrchestrator } from './agents/mcp-orchestrator.js';
+import { chatOptimizer } from './agents/chat-optimizer.js';
 import { externalDataAdapter } from './utils/external-data-adapter.js';
 import {
   RegisterDeviceRequestSchema,
@@ -128,6 +129,7 @@ app.get('/', (c) => {
       miniTools: 'POST /mini-tools/teams-transcript, GET /mini-tools/teams-transcript, GET /mini-tools/teams-transcript/:id, DELETE /mini-tools/teams-transcript/:id, GET /mini-tools/teams-transcript/stats',
       mcpOrchestrator: 'POST /api/mcp/analyze, POST /api/mcp/strategy, POST /api/mcp/record, GET /api/mcp/stats, GET /api/mcp/capabilities',
       externalData: 'POST /api/external/data/sessions/create, POST /api/external/data/upload, POST /api/external/data/sessions/create-and-upload, POST /api/external/data/sessions/:id/end, GET /api/external/data/sessions, GET /api/external/data/sessions/:id, GET /api/external/data/sessions/:id/stats, POST /api/external/data/batch-upload',
+      chatOptimizer: 'POST /api/optimizer/prompt, POST /api/optimizer/message, POST /api/optimizer/session, POST /api/optimizer/file-upload, GET /api/optimizer/file/:id, GET /api/optimizer/stats, POST /api/optimizer/clear-cache',
     },
     documentation: 'https://github.com/Clauskraft/mcp-universal-bridge',
   });
@@ -1515,6 +1517,123 @@ app.post('/api/external/data/batch-upload', async (c) => {
   const result = externalDataAdapter.batchUpload(uploads);
 
   return c.json(result);
+});
+
+// ==================== Chat Optimizer ====================
+
+// POST /api/optimizer/prompt - Optimize system prompt
+app.post('/api/optimizer/prompt', async (c) => {
+  const body = await c.req.json();
+  const { prompt } = body;
+
+  if (!prompt) {
+    throw new BridgeError(
+      'prompt is required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const result = chatOptimizer.optimizeSystemPrompt(prompt);
+  return c.json({ optimization: result });
+});
+
+// POST /api/optimizer/message - Optimize message content
+app.post('/api/optimizer/message', async (c) => {
+  const body = await c.req.json();
+  const { message } = body;
+
+  if (!message) {
+    throw new BridgeError(
+      'message is required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const result = await chatOptimizer.optimizeMessage(message);
+  return c.json({ optimization: result });
+});
+
+// POST /api/optimizer/session - Optimize session context
+app.post('/api/optimizer/session', async (c) => {
+  const body = await c.req.json();
+  const { sessionId, maxMessages } = body;
+
+  if (!sessionId) {
+    throw new BridgeError(
+      'sessionId is required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const session = sessionManager.getSession(sessionId);
+  const result = chatOptimizer.optimizeSessionContext(session, maxMessages || 10);
+
+  return c.json({ optimization: result });
+});
+
+// POST /api/optimizer/file-upload - Upload file and get reference
+app.post('/api/optimizer/file-upload', async (c) => {
+  const body = await c.req.json();
+  const { content, filename, mimeType } = body;
+
+  if (!content || !filename) {
+    throw new BridgeError(
+      'content and filename are required',
+      'INVALID_REQUEST',
+      400
+    );
+  }
+
+  const result = await chatOptimizer.optimizeFileAttachment(
+    content,
+    filename,
+    mimeType || 'text/plain'
+  );
+
+  return c.json({ optimization: result });
+});
+
+// GET /api/optimizer/file/:id - Get file content by reference
+app.get('/api/optimizer/file/:id', (c) => {
+  const fileId = c.req.param('id');
+  const content = chatOptimizer.getFileContent(fileId);
+
+  if (!content) {
+    throw new BridgeError(
+      `File ${fileId} not found`,
+      'FILE_NOT_FOUND',
+      404
+    );
+  }
+
+  const reference = chatOptimizer.getFileReference(fileId);
+
+  return c.json({
+    fileId,
+    content,
+    reference,
+  });
+});
+
+// GET /api/optimizer/stats - Get optimization statistics
+app.get('/api/optimizer/stats', (c) => {
+  const stats = chatOptimizer.getStatistics();
+  return c.json(stats);
+});
+
+// POST /api/optimizer/clear-cache - Clear old cache entries
+app.post('/api/optimizer/clear-cache', async (c) => {
+  const body = await c.req.json();
+  const olderThan = body.olderThan || 3600000;
+
+  chatOptimizer.clearCache(olderThan);
+
+  return c.json({
+    message: 'Cache cleared successfully',
+  });
 });
 
 // ==================== Export ====================
