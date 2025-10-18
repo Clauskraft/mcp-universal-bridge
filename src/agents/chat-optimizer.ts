@@ -44,8 +44,18 @@ export class ChatOptimizer {
   private promptTemplates: Map<string, PromptTemplate> = new Map();
   private messageCache: Map<string, string> = new Map();
 
+  private readonly MAX_CACHE_SIZE_MB: number;
+  private readonly MAX_FILE_SIZE_MB: number = 10;
+  private currentCacheSize: number = 0;
+
   constructor() {
+    this.MAX_CACHE_SIZE_MB = parseInt(process.env.OPTIMIZER_MAX_CACHE_MB || '100');
     this.initializeStandardTemplates();
+
+    // Auto-cleanup every hour
+    setInterval(() => {
+      this.clearCache(3600000); // 1 hour
+    }, 3600000);
   }
 
   /**
@@ -144,6 +154,19 @@ export class ChatOptimizer {
    */
   async optimizeFileAttachment(content: string, filename: string, mimeType: string): Promise<OptimizationResult> {
     const originalTokens = this.estimateTokens(content);
+    const fileSizeMB = content.length / (1024 * 1024);
+
+    // Check file size limit
+    if (fileSizeMB > this.MAX_FILE_SIZE_MB) {
+      throw new Error(`File too large: ${fileSizeMB.toFixed(2)}MB (max ${this.MAX_FILE_SIZE_MB}MB)`);
+    }
+
+    // Check cache size limit
+    const newCacheSizeMB = (this.currentCacheSize + content.length) / (1024 * 1024);
+    if (newCacheSizeMB > this.MAX_CACHE_SIZE_MB) {
+      // Auto-cleanup oldest entries to make room
+      this.evictOldestEntries(content.length);
+    }
 
     // Create file reference
     const fileId = this.generateFileId(content);
@@ -160,6 +183,7 @@ export class ChatOptimizer {
     // Store file reference
     this.fileReferences.set(fileId, fileRef);
     this.messageCache.set(fileId, content);
+    this.currentCacheSize += content.length;
 
     // Create optimized reference
     const reference = `[File: ${filename} (${this.formatBytes(content.length)}) - ID: ${fileId}]`;
@@ -549,16 +573,52 @@ export class ChatOptimizer {
   }
 
   /**
+   * Evict oldest entries to make room for new content
+   */
+  private evictOldestEntries(bytesNeeded: number): void {
+    const entries = Array.from(this.fileReferences.entries())
+      .sort((a, b) => a[1].uploadedAt.getTime() - b[1].uploadedAt.getTime());
+
+    let freedBytes = 0;
+
+    for (const [id, ref] of entries) {
+      if (freedBytes >= bytesNeeded) break;
+
+      const content = this.messageCache.get(id);
+      if (content) {
+        freedBytes += content.length;
+        this.currentCacheSize -= content.length;
+      }
+
+      this.fileReferences.delete(id);
+      this.messageCache.delete(id);
+    }
+
+    console.log(`[ChatOptimizer] Evicted ${entries.length} entries, freed ${this.formatBytes(freedBytes)}`);
+  }
+
+  /**
    * Clear old cache entries
    */
   clearCache(olderThan: number = 3600000): void {
     const now = Date.now();
+    let clearedBytes = 0;
 
     for (const [id, ref] of this.fileReferences.entries()) {
       if (now - ref.uploadedAt.getTime() > olderThan) {
+        const content = this.messageCache.get(id);
+        if (content) {
+          clearedBytes += content.length;
+          this.currentCacheSize -= content.length;
+        }
+
         this.fileReferences.delete(id);
         this.messageCache.delete(id);
       }
+    }
+
+    if (clearedBytes > 0) {
+      console.log(`[ChatOptimizer] Cleared ${this.formatBytes(clearedBytes)} from cache`);
     }
   }
 }

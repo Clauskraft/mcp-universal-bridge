@@ -4,6 +4,7 @@ import { logger } from 'hono/logger';
 import { rateLimiter } from 'hono-rate-limiter';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { sanitizeRequestBody, getSanitizedBody, sanitizeString, sanitizeSQLInput } from './middleware/sanitization.js';
+import { enableGlobalLoggingSanitization, sanitizeErrorMiddleware } from './middleware/sanitize-output.js';
 import { sessionManager } from './utils/session.js';
 import { providerManager } from './providers/manager.js';
 import { databaseManager, databaseTools } from './tools/database.js';
@@ -17,6 +18,7 @@ import { hybridAgent } from './tools/automation/agent.js';
 import { UITarsAutomation } from './tools/automation/uitars.js';
 import { mcpOrchestrator } from './agents/mcp-orchestrator.js';
 import { chatOptimizer } from './agents/chat-optimizer.js';
+import { integrationManager } from './managers/integration-manager.js';
 import { externalDataAdapter } from './utils/external-data-adapter.js';
 import {
   RegisterDeviceRequestSchema,
@@ -27,6 +29,9 @@ import {
 } from './types/index.js';
 
 const app = new Hono();
+
+// Enable global logging sanitization (prevent key leaks in logs)
+enableGlobalLoggingSanitization();
 
 // ==================== Middleware ====================
 
@@ -47,6 +52,7 @@ app.get('/dashboard/chat.html', serveStatic({ path: './dashboard/public/chat.htm
 app.get('/dashboard/settings.html', serveStatic({ path: './dashboard/public/settings.html' }));
 app.get('/dashboard/onboarding.html', serveStatic({ path: './dashboard/public/onboarding.html' }));
 app.get('/dashboard/mini-tools.html', serveStatic({ path: './dashboard/public/mini-tools.html' }));
+app.get('/dashboard/integrations.html', serveStatic({ path: './dashboard/public/integrations.html' }));
 
 // Alternative routes without .html extension
 app.get('/dashboard/chat', serveStatic({ path: './dashboard/public/chat.html' }));
@@ -72,29 +78,8 @@ app.use('*', sanitizeRequestBody);
 
 app.use('*', logger());
 
-// Error handler
-app.onError((err, c) => {
-  console.error('Error:', err);
-
-  if (err instanceof BridgeError) {
-    return c.json(
-      {
-        error: err.message,
-        code: err.code,
-        details: err.details,
-      },
-      err.statusCode as any
-    );
-  }
-
-  return c.json(
-    {
-      error: err.message || 'Internal server error',
-      code: 'INTERNAL_ERROR',
-    },
-    500
-  );
-});
+// Error handler with sanitization
+app.onError(sanitizeErrorMiddleware());
 
 // ==================== Root & Health ====================
 
@@ -130,6 +115,7 @@ app.get('/', (c) => {
       mcpOrchestrator: 'POST /api/mcp/analyze, POST /api/mcp/strategy, POST /api/mcp/record, GET /api/mcp/stats, GET /api/mcp/capabilities',
       externalData: 'POST /api/external/data/sessions/create, POST /api/external/data/upload, POST /api/external/data/sessions/create-and-upload, POST /api/external/data/sessions/:id/end, GET /api/external/data/sessions, GET /api/external/data/sessions/:id, GET /api/external/data/sessions/:id/stats, POST /api/external/data/batch-upload',
       chatOptimizer: 'POST /api/optimizer/prompt, POST /api/optimizer/message, POST /api/optimizer/session, POST /api/optimizer/file-upload, GET /api/optimizer/file/:id, GET /api/optimizer/stats, POST /api/optimizer/clear-cache',
+      integrations: 'POST /api/integrations, GET /api/integrations, GET /api/integrations/:id, DELETE /api/integrations/:id, POST /api/integrations/:id/oauth/start, POST /api/integrations/:id/oauth/callback, POST /api/integrations/:id/execute, GET /api/integrations/capabilities, GET /api/integrations/stats',
     },
     documentation: 'https://github.com/Clauskraft/mcp-universal-bridge',
   });
@@ -1634,6 +1620,103 @@ app.post('/api/optimizer/clear-cache', async (c) => {
   return c.json({
     message: 'Cache cleared successfully',
   });
+});
+
+// ==================== Integrations ====================
+
+// POST /api/integrations - Register new integration
+app.post('/api/integrations', async (c) => {
+  const body = await c.req.json();
+  const { type, name, config, metadata } = body;
+
+  if (!type || !name || !config) {
+    throw new BridgeError('type, name, and config are required', 'INVALID_REQUEST', 400);
+  }
+
+  const integration = integrationManager.registerIntegration(type, name, config, metadata);
+  return c.json({ integration, message: 'Integration registered successfully' }, 201);
+});
+
+// GET /api/integrations - List all integrations
+app.get('/api/integrations', (c) => {
+  const integrations = integrationManager.getAllIntegrations();
+  return c.json({ integrations });
+});
+
+// GET /api/integrations/:id - Get specific integration
+app.get('/api/integrations/:id', (c) => {
+  const id = c.req.param('id');
+  const integration = integrationManager.getIntegration(id);
+
+  if (!integration) {
+    throw new BridgeError('Integration not found', 'NOT_FOUND', 404);
+  }
+
+  return c.json({ integration });
+});
+
+// DELETE /api/integrations/:id - Delete integration
+app.delete('/api/integrations/:id', (c) => {
+  const id = c.req.param('id');
+  const deleted = integrationManager.deleteIntegration(id);
+
+  if (!deleted) {
+    throw new BridgeError('Integration not found', 'NOT_FOUND', 404);
+  }
+
+  return c.json({ message: 'Integration deleted successfully' });
+});
+
+// POST /api/integrations/:id/oauth/start - Start OAuth flow
+app.post('/api/integrations/:id/oauth/start', (c) => {
+  const id = c.req.param('id');
+  const authUrl = integrationManager.startOAuthFlow(id);
+  return c.json({ authUrl });
+});
+
+// POST /api/integrations/:id/oauth/callback - OAuth callback
+app.post('/api/integrations/:id/oauth/callback', async (c) => {
+  const body = await c.req.json();
+  const id = c.req.param('id');
+  const { code, state } = body;
+
+  if (!code || !state) {
+    throw new BridgeError('code and state are required', 'INVALID_REQUEST', 400);
+  }
+
+  const integration = await integrationManager.completeOAuthFlow(id, code, state);
+  return c.json({ integration, message: 'OAuth completed successfully' });
+});
+
+// POST /api/integrations/:id/execute - Execute integration call
+app.post('/api/integrations/:id/execute', async (c) => {
+  const body = await c.req.json();
+  const id = c.req.param('id');
+  const { endpoint, method, data } = body;
+
+  if (!endpoint) {
+    throw new BridgeError('endpoint is required', 'INVALID_REQUEST', 400);
+  }
+
+  const result = await integrationManager.executeIntegrationCall(id, endpoint, {
+    method: method || 'GET',
+    body: data ? JSON.stringify(data) : undefined,
+    headers: data ? { 'Content-Type': 'application/json' } : undefined,
+  });
+
+  return c.json({ result });
+});
+
+// GET /api/integrations/capabilities - Get available capabilities
+app.get('/api/integrations/capabilities', (c) => {
+  const capabilities = integrationManager.getAvailableCapabilities();
+  return c.json({ capabilities });
+});
+
+// GET /api/integrations/stats - Get statistics
+app.get('/api/integrations/stats', (c) => {
+  const stats = integrationManager.getStatistics();
+  return c.json(stats);
 });
 
 // ==================== Export ====================
